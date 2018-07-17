@@ -149,38 +149,58 @@
 			<Anchor point="LEFT"/>
 			<Anchor point="RIGHT"/>
 		</Anchors>
+		<Backdrop edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+			<EdgeSize>
+				<AbsValue val="16"/>
+			</EdgeSize>
+		</Backdrop>		
 		<Layers>
 			<Layer level="BACKGROUND">
+				<Texture name="$parentBackground" file="Interface\Garrison\GarrisonMissionParchment" vertTile="true" horizTile="true" parentKey="background">
+					<Anchors>
+						<Anchor point="TOPLEFT" x="3" y="-3"/>
+						<Anchor point="BOTTOMRIGHT" x="-3" y="3"/>
+					</Anchors>
+					<Color r="0.7" g="0.7" b="0.7" a="1" />
+				</Texture>	
+			</Layer>
+			<Layer level="BACKGROUND" textureSubLevel="1">
+				<Texture name="$parentTitleBackground" file="Interface\PETBATTLES\PetBattleHUDAtlas" horizTile="true" parentKey="titleBar">
+					<Size x="0" y="31"/>
+					<Anchors>
+						<Anchor point="TOPLEFT" x="4" y="-3"/>
+						<Anchor point="TOPRIGHT" x="-4" y="-3"/>
+					</Anchors>
+					<TexCoords left="0" right="1" top="0.123046875" bottom="0.2060546875"/>
+				</Texture>				
+			<!--
 				<Texture file="Interface\FrameGeneral\UI-Background-Marble" vertTile="true" horizTile="true" parentKey="HeaderBG">
 					<Anchors>
 						<Anchor point="TOPLEFT" x="2" y="-1"/>
 						<Anchor point="BOTTOMRIGHT" relativePoint="TOPRIGHT" x="-2"  y="-31" />
 					</Anchors>
 				</Texture>
+				-->
 			</Layer>
-			<Layer level="BACKGROUND" textureSubLevel="-1">
-				<Texture file="Interface\FrameGeneral\UI-Background-Rock" vertTile="true" horizTile="true" parentKey="Background">
+
+			<Layer level="ARTWORK">						
+			
+				
+				
+				<FontString name="$parentName" inherits="GameFontWhite" maxLines="1" hidden="false" justifyH="LEFT" justifyV="MIDDLE" parentKey="Name">
 					<Anchors>
-						<Anchor point="TOPLEFT" x="2" y="-5"/>
-						<Anchor point="BOTTOMRIGHT" x="-3" y="2"/>
-					</Anchors>
-				</Texture>
-			</Layer>
-			<Layer level="ARTWORK">
-				<FontString name="$parentName" inherits="GameFontNormal" maxLines="1" hidden="false" justifyH="LEFT" justifyV="MIDDLE" parentKey="Name">
-					<Anchors>
-						<Anchor point="TOPLEFT" relativeKey="$parent.HeaderBG" x="20" />
-						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.HeaderBG" x="-20" />
+						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" x="20" />
+						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.titleBar" x="-20" y="2"/>
 					</Anchors>
 				</FontString>
 				
-				<FontString inherits="GameFontNormalSmall" maxLines="1" hidden="true" justifyH="LEFT" justifyV="MIDDLE" parentKey="ClipboardInfo" text="Clipboard:">
+				<FontString inherits="GameFontWhiteSmall" maxLines="1" hidden="true" justifyH="LEFT" justifyV="MIDDLE" parentKey="ClipboardInfo" text="Clipboard:">
 					<Anchors>
-						<Anchor point="TOPLEFT" relativeKey="$parent.HeaderBG" relativePoint="BOTTOMLEFT" x="30" y="-8"/>
+						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" relativePoint="BOTTOMLEFT" x="30" y="-8"/>
 					</Anchors>
 				</FontString>
 				
-				<FontString inherits="GameFontNormal" hidden="true" justifyH="LEFT" justifyV="MIDDLE" parentKey="Details" spacing="3">
+				<FontString inherits="GameFontWhite" hidden="true" justifyH="LEFT" justifyV="MIDDLE" parentKey="Details" spacing="3">
 					<Anchors>
 						<Anchor point="BOTTOMLEFT" x="30" y="13"/>
 						<Anchor point="BOTTOMRIGHT" x="-20" y="13"/>
@@ -197,12 +217,48 @@
 				<Size y="20"/>
 				<Anchors>
 					<Anchor point="LEFT" relativeKey="$parent.ClipboardInfo" relativePoint="RIGHT" x="15"/>
-					<Anchor point="RIGHT" x="-15"/>
+					<Anchor point="RIGHT" x="-35"/>
 				</Anchors>
+				
+				<Layers>
+					<Layer level="ARTWORK">
+						<Texture parentKey="Checkmark" file="Interface\Scenarios\ScenarioIcon-Check" alpha="0">
+							<Size x="16" y="16" />
+							<Anchors>
+								<Anchor point="LEFT" relativePoint="RIGHT" x="3"/>
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				
+				<Animations>
+					<AnimationGroup parentKey="CheckAnim" setToFinalAlpha="true" looping="NONE">
+						<Alpha parentKey="Checkmark" childKey="Checkmark" fromAlpha="1" toAlpha="0"  Duration="0.6" order="0" />
+						<Scale parentKey="Checkmark" childKey="Checkmark" fromScaleX="0.7" toScaleX="1.5" smoothing="NONE" fromScaleY="0.7" toScaleY="1.5" Duration="0.6" order="0"/>
+					</AnimationGroup>
+				</Animations>
+				
 				<Scripts>
 					<Onload>
 						self:SetAutoFocus(false);
 					</Onload>
+					<OnEnterPressed>
+						self:ClearFocus();
+					</OnEnterPressed>
+					<OnKeyUp>
+						if (key == "C" and IsControlKeyDown()) then
+							self.CheckAnim:Stop();
+							self:ClearFocus();
+							self.CheckAnim:Play();
+							PlaySound(SOUNDKIT.TUTORIAL_POPUP);
+						end
+					</OnKeyUp>
+					<OnTextChanged>
+						if userInput then
+							self:SetText(self:GetParent().Api:GetClipboardString());
+							self:HighlightText();
+						end
+					</OnTextChanged>
 				</Scripts>
 			</EditBox>
 			
@@ -274,6 +330,7 @@
 			<OnClick function="APII_List_OnClick"/>
 			<OnLoad>
 				self:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+				self:SetBackdropBorderColor(0.7, 0.5, 0.125, 1);
 			</OnLoad>
 			<OnEnter>
 				self.highlight:Show();
@@ -333,34 +390,57 @@
 		</Scripts>
 	</Button>
 	
-	<Button name="APII_CollectionTab" inherits="CharacterFrameTabButtonTemplate" virtual="true">
-		<Scripts>
-			<OnClick>
-				APII_SetTab(self:GetParent(), self:GetID());
-				PlaySound("UI_Toybox_Tabs");
-			</OnClick>
-		</Scripts>
-	</Button>
-	
-	<Frame name="APII_Core" inherits="BasicFrameTemplate" movable="true" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
-		<Size x="500" y="450"/>
+	<Frame name="APII_Core" inherits="BasicFrameTemplate" mixin="APII_COREMIXIN" movable="true" resizable="true" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
+		<Size x="550" y="450"/>
 		<Anchors>
 			<Anchor point="CENTER" x="0" y="0"/>
 		</Anchors>
+		
+		<!--
+		<Frames>
+			<Frame parentKey="Resize">
+				<Size x="15" y="15" />
+				<Anchors>
+					<Anchor point="BOTTOMRIGHT" x="0" y="0"/>
+				</Anchors>
+				<Layers>
+					<Layer level="ARTWORK">
+						<Texture parentKey="Art" file="Interface\CHATFRAME\UI-ChatIM-SizeGrabber-Up" alpha="1">
+						</Texture>
+					</Layer>
+					
+					<Layer level="HIGHLIGHT">
+						<Texture parentKey="Art" file="Interface\CHATFRAME\UI-ChatIM-SizeGrabber-Highlight" alpha="1">
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnMouseDown function="APII_Resize_OnMouseDown"/>
+					<OnMouseUp function="APII_Resize_OnMouseUp"/>
+					<OnEnter>
+						self.Art:SetAlpha(1);
+					</OnEnter>
+					<OnLeave>
+						self.Art:SetAlpha(1);
+					</OnLeave>
+				</Scripts>
+			</Frame>
+		</Frames>
+		-->
 		
 		<Scripts>
 			<OnLoad>
 				self:SetClampedToScreen(true);
 				self.TitleText:SetText("APIInterface");
 				self:RegisterForDrag("LeftButton");
-				self:SetScript("OnDragStart", self.StartMoving );
-				self:SetScript("OnDragStop", self.StopMovingOrSizing);
-				<!--
-				UIPanelWindows["APII_Core"] = { area = "left", pushable = 4 }
-				PanelTemplates_SetNumTabs(self, 2);
-				PanelTemplates_SetTab(self, 1);
-				-->
+				self:SetMinResize(250, 200)
 			</OnLoad>
+			<OnShow>
+				PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);
+			</OnShow>
+			<OnHide>
+				PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE);
+			</OnHide>
 		</Scripts>
 	</Frame>
 	
@@ -386,9 +466,91 @@
 					<Anchor point="TOPLEFT" relativeKey="$parent.insetLeft"  x="15" y="-9"/>
 				</Anchors>
 				<Scripts>
-					<OnTextChanged function="APII_Search_OnTextChanged"/>
+					<OnTextChanged>
+						APII_Core:Search_OnTextChanged(self);
+					</OnTextChanged>
 				</Scripts>
 			</EditBox>
+			<Button parentKey="buttonFunctions" inherits="UIMenuButtonStretchTemplate" text="Functions" frameStrata="HIGH">
+				<Size x="80" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.searchBox" relativePoint="RIGHT" x="15" />
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						self:SetEnabled(false);
+					</OnLoad>
+					<OnClick> 
+						APII_Core:GlobalSearch_OnClick("function");
+					</OnClick>	
+					<OnEnter> 
+						APII_Core:GlobalSearch_OnEnter(self, "function");
+					</OnEnter>
+					<OnLeave> 
+						GameTooltip:Hide();
+					</OnLeave>
+				</Scripts>				
+			</Button>
+			<Button parentKey="buttonTables" inherits="UIMenuButtonStretchTemplate" text="Tables" frameStrata="HIGH">
+				<Size x="80" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.buttonFunctions" relativePoint="RIGHT" x="5" />
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						self:SetEnabled(false);
+					</OnLoad>
+					<OnClick> 
+						APII_Core:GlobalSearch_OnClick("table");
+					</OnClick>	
+					<OnEnter> 
+						APII_Core:GlobalSearch_OnEnter(self, "table");
+					</OnEnter>
+					<OnLeave> 
+						GameTooltip:Hide();
+					</OnLeave>
+				</Scripts>				
+			</Button>
+			<Button parentKey="buttonFrames" inherits="UIMenuButtonStretchTemplate" text="Frames" frameStrata="HIGH">
+				<Size x="80" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.buttonTables" relativePoint="RIGHT" x="5" />
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						self:SetEnabled(false);
+					</OnLoad>
+					<OnClick> 
+						APII_Core:GlobalSearch_OnClick("table", true);
+					</OnClick>	
+					<OnEnter> 
+						APII_Core:GlobalSearch_OnEnter(self, "frame");
+					</OnEnter>
+					<OnLeave> 
+						GameTooltip:Hide();
+					</OnLeave>
+				</Scripts>				
+			</Button>
+			<Button parentKey="buttonStrings" inherits="UIMenuButtonStretchTemplate" text="Strings" frameStrata="HIGH">
+				<Size x="80" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.buttonFrames" relativePoint="RIGHT" x="5" />
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						self:SetEnabled(false);
+					</OnLoad>
+					<OnClick> 
+						APII_Core:GlobalSearch_OnClick("string");
+					</OnClick>
+					<OnEnter> 
+						APII_Core:GlobalSearch_OnEnter(self, "string");
+					</OnEnter>
+					<OnLeave> 
+						GameTooltip:Hide();
+					</OnLeave>
+				</Scripts>				
+			</Button>
 			<Frame parentKey="filterBar">
 				<Size y="0.1"/>
 				<Anchors>
@@ -443,9 +605,8 @@
 							<OnMouseUp>
 								self.texture:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0);
 							</OnMouseUp>
-							<OnClick>
-								APIIListsSystemList.InSystem = nil;
-								APII_UpdateFilterBar();
+							<OnClick> <!-- function="APII_FilterClearButton_OnClick" />-->
+								self:GetParent():GetParent():GetParent():FilterClearButton_OnClick();
 							</OnClick>
 						</Scripts>
 					</Button>
@@ -460,8 +621,8 @@
 				<Frames>
 					<Slider name="$parentScrollBar" inherits="HybridScrollBarTrimTemplate" parentKey="scrollBar">
 						<Anchors>
-							<Anchor point="TOPLEFT" relativePoint="TOPRIGHT" x="4" y="19"/>
-							<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT" x="4" y="11"/>
+							<Anchor point="TOPLEFT" relativePoint="BOTTOMRIGHT" x="4" y="400"/>
+							<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT" x="4" y="7"/>
 						</Anchors>
 						<Scripts>
 							<OnLoad>

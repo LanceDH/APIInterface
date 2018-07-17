@@ -1,8 +1,8 @@
-﻿## Interface: 72000
+﻿## Interface: 80000
 ## Title: APIInterface
 ## Notes: Interface for api documentation.
 ## Author: LanceDH
-## Version: 7.2.b01
+## Version: 8.0.01b
 ## SavedVariables: APIIDB
 
 APIInterface.xml
