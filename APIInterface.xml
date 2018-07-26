@@ -231,6 +231,8 @@
 					</Layer>
 				</Layers>
 				
+				
+				
 				<Animations>
 					<AnimationGroup parentKey="CheckAnim" setToFinalAlpha="true" looping="NONE">
 						<Alpha parentKey="Checkmark" childKey="Checkmark" fromAlpha="1" toAlpha="0"  Duration="0.6" order="0" />
@@ -261,6 +263,26 @@
 					</OnTextChanged>
 				</Scripts>
 			</EditBox>
+			
+			<SimpleHTML parentKey="Details">
+					<size x="450" y="500"/>
+					<Anchors>
+						<Anchor point="TOP" relativeKey="$parent.ClipboardString" relativePoint="BOTTOM"  y="-5"/>
+						<Anchor point="LEFT" x="30"/>
+						<Anchor point="RIGHT" x="30"/>
+						<!--<Anchor point="BOTTOMLEFT" x="30" y="13"/>
+						<Anchor point="BOTTOMRIGHT" x="-20" y="13"/>
+						-->
+					</Anchors>
+					<FontString inherits="GameFontWhite" hidden="true" justifyH="LEFT" justifyV="MIDDLE"  spacing="3" nonspacewrap="true" />
+					
+					<Scripts>
+						<OnHyperlinkClick>
+							APII_Core:HandleHyperlink(self, link, text, button);
+						</OnHyperlinkClick>
+					</Scripts>
+					
+				</SimpleHTML>
 			
 			<Frame name="$parentHighlight" setAllPoints="true" hidden="true" enableMouse="false" parentKey="highlight">
 				<Layers>
@@ -433,7 +455,7 @@
 				self:SetClampedToScreen(true);
 				self.TitleText:SetText("APIInterface");
 				self:RegisterForDrag("LeftButton");
-				self:SetMinResize(250, 200)
+				self:SetMinResize(250, 200);
 			</OnLoad>
 			<OnShow>
 				PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);
@@ -467,7 +489,7 @@
 				</Anchors>
 				<Scripts>
 					<OnTextChanged>
-						APII_Core:Search_OnTextChanged(self);
+						APII_Core:Search_OnTextChanged(self, userInput);
 					</OnTextChanged>
 				</Scripts>
 			</EditBox>
