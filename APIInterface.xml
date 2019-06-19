@@ -412,8 +412,8 @@
 		</Scripts>
 	</Button>
 	
-	<Frame name="APII_Core" inherits="BasicFrameTemplate" mixin="APII_COREMIXIN" movable="true" resizable="true" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
-		<Size x="550" y="450"/>
+	<Frame name="APII_Core" inherits="BasicFrameTemplate" mixin="APII_COREMIXIN" movable="true" resizable="false" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
+		<Size x="575" y="450"/>
 		<Anchors>
 			<Anchor point="CENTER" x="0" y="0"/>
 		</Anchors>
@@ -485,7 +485,7 @@
 			<EditBox parentKey="searchBox" inherits="SearchBoxTemplate" letters="40">
 				<Size x="145" y="20"/>
 				<Anchors>
-					<Anchor point="TOPLEFT" relativeKey="$parent.insetLeft"  x="15" y="-9"/>
+					<Anchor point="TOPLEFT" relativeKey="$parent.insetLeft"  x="15" y="-7"/>
 				</Anchors>
 				<Scripts>
 					<OnTextChanged>
@@ -493,10 +493,31 @@
 					</OnTextChanged>
 				</Scripts>
 			</EditBox>
-			<Button parentKey="buttonFunctions" inherits="UIMenuButtonStretchTemplate" text="Functions" frameStrata="HIGH">
-				<Size x="80" y="22"/>
+			<CheckButton parentKey="checkUndocumented" inherits="UICheckButtonTemplate">
+				<Size x="25" y="25"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeKey="$parent.searchBox" relativePoint="RIGHT" x="15" />
+					<Anchor point="LEFT" relativeKey="$parent.searchBox" relativePoint="RIGHT" x="0" y="-2"/>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						self:SetChecked(true);
+					</OnLoad>
+					<OnClick>
+						APII_Core:CheckDocumented_OnClick(self);
+					</OnClick>
+					<OnEnter> 
+						APII_Core:CheckDocumented_OnEnter(self);
+					</OnEnter>
+					<OnLeave> 
+						GameTooltip:Hide();
+					</OnLeave>
+				</Scripts>
+			</CheckButton>
+			<Button parentKey="buttonFunctions" inherits="UIMenuButtonStretchTemplate" text="Functions" frameStrata="HIGH">
+				<Size x="70" y="22"/>
+
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.checkUndocumented" relativePoint="RIGHT" x="0" y="1"/>
 				</Anchors>
 				<Scripts>
 					<OnLoad>
@@ -514,9 +535,9 @@
 				</Scripts>				
 			</Button>
 			<Button parentKey="buttonTables" inherits="UIMenuButtonStretchTemplate" text="Tables" frameStrata="HIGH">
-				<Size x="80" y="22"/>
+				<Size x="70" y="22"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeKey="$parent.buttonFunctions" relativePoint="RIGHT" x="5" />
+					<Anchor point="LEFT" relativeKey="$parent.buttonFunctions" relativePoint="RIGHT" x="1" />
 				</Anchors>
 				<Scripts>
 					<OnLoad>
@@ -534,9 +555,9 @@
 				</Scripts>				
 			</Button>
 			<Button parentKey="buttonFrames" inherits="UIMenuButtonStretchTemplate" text="Frames" frameStrata="HIGH">
-				<Size x="80" y="22"/>
+				<Size x="70" y="22"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeKey="$parent.buttonTables" relativePoint="RIGHT" x="5" />
+					<Anchor point="LEFT" relativeKey="$parent.buttonTables" relativePoint="RIGHT" x="1" />
 				</Anchors>
 				<Scripts>
 					<OnLoad>
@@ -554,9 +575,9 @@
 				</Scripts>				
 			</Button>
 			<Button parentKey="buttonStrings" inherits="UIMenuButtonStretchTemplate" text="Strings" frameStrata="HIGH">
-				<Size x="80" y="22"/>
+				<Size x="70" y="22"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeKey="$parent.buttonFrames" relativePoint="RIGHT" x="5" />
+					<Anchor point="LEFT" relativeKey="$parent.buttonFrames" relativePoint="RIGHT" x="1" />
 				</Anchors>
 				<Scripts>
 					<OnLoad>
@@ -567,6 +588,26 @@
 					</OnClick>
 					<OnEnter> 
 						APII_Core:GlobalSearch_OnEnter(self, "string");
+					</OnEnter>
+					<OnLeave> 
+						GameTooltip:Hide();
+					</OnLeave>
+				</Scripts>				
+			</Button>
+			<Button parentKey="ButtonValues" inherits="UIMenuButtonStretchTemplate" text="Values" frameStrata="HIGH">
+				<Size x="70" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.buttonStrings" relativePoint="RIGHT" x="1" />
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						self:SetEnabled(false);
+					</OnLoad>
+					<OnClick> 
+						APII_Core:GlobalSearch_OnClick("value");
+					</OnClick>
+					<OnEnter> 
+						APII_Core:GlobalSearch_OnEnter(self, "value");
 					</OnEnter>
 					<OnLeave> 
 						GameTooltip:Hide();
