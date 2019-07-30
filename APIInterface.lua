@@ -24,8 +24,11 @@ local COLOR_FILTER1 = "|cff......";
 local COLOR_FILTER2 = "|r";
 local DETAILS_NO_PUBLIC = "This function does nothing in public clients";
 local DETAILS_NO_PUBLIC_REPLACE = "|cffff0000This function does nothing in public clients|r";
+local ARGUMENT_LABEL_FORMAT = "arg (%d+):";
+local ARGUMENT_LABEL_FORMAT_NEW = "%d. %s:";
 
 local _includeUndocumented = true;
+local _EventArgLookup = {};
 
 ----------
 -- Code
@@ -501,6 +504,30 @@ function APII:UpdateSystemList()
 
 end
 
+function APII:UpdateEventTraceTooltip()
+	local tooltip = _G["EventTraceTooltip"];
+	local index = 1;
+	local line = _G["EventTraceTooltipTextLeft"..index];
+	local eventName = line:GetText();
+	
+	if (not eventName or not _EventArgLookup[eventName]) then
+		return;
+	end
+	local args = _EventArgLookup[eventName];
+	
+	while (line) do
+		local lineText = line:GetText();
+		if (not lineText) then return; end
+		local argIndex = tonumber(lineText:match(ARGUMENT_LABEL_FORMAT));
+		if (argIndex and args[argIndex]) then 
+			line:SetText(ARGUMENT_LABEL_FORMAT_NEW:format(argIndex, args[argIndex].Name));
+		end
+		
+		index = index + 1;
+		line = _G["EventTraceTooltipTextLeft"..index];
+	end
+end
+
 function APII:OnInitialize()
 	APII_Core:SetScript("OnDragStart", function(self)
 					self:StartMoving();
@@ -534,6 +561,14 @@ function APII:OnEnable()
 	for k, system in ipairs(APIDocumentation.systems) do
 		APII:GetUndocumentedFunctions(system);
 	end
+	
+	for k, v in ipairs(APIDocumentation.events) do
+		_EventArgLookup[v.LiteralName] = v.Payload
+	end
+	
+	if (LDHDebug) then
+		LDHDebug:Monitor(_addonName);
+	end
 end
 
 ----------
@@ -543,8 +578,14 @@ end
 APII.events = CreateFrame("FRAME", "APII_EventFrame"); 
 APII.events:RegisterEvent("PLAYER_REGEN_DISABLED");
 APII.events:RegisterEvent("PLAYER_REGEN_ENABLED");
+APII.events:RegisterEvent("ADDON_LOADED");
 APII.events:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
 
+function APII.events:ADDON_LOADED(addonName)
+	if (addonName == "Blizzard_DebugTools") then
+		hooksecurefunc("EventTraceFrameEvent_DisplayTooltip", function() APII:UpdateEventTraceTooltip() end);
+	end
+end
 
 function APII.events:PLAYER_REGEN_DISABLED(loaded_addon)
 	HideUIPanel(APII_Core);
