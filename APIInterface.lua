@@ -28,7 +28,6 @@ local ARGUMENT_LABEL_FORMAT = "arg (%d+):";
 local ARGUMENT_LABEL_FORMAT_NEW = "%d. %s:";
 
 local _includeUndocumented = true;
-local _EventArgLookup = {};
 
 ----------
 -- Code
@@ -112,9 +111,6 @@ function APII:GetUndocumentedFunctions(system)
 end
 
 function APII:UpdateSearchResults()
-	--for i=#APIIListsSystemList.SearchResults, 1, -1 do
-	--	table.remove(APIIListsSystemList.SearchResults, i)
-	--end
 	if (not APIIListsSystemList.Undocumented) then
 		APIIListsSystemList.Undocumented = {}
 	end
@@ -504,17 +500,20 @@ function APII:UpdateSystemList()
 
 end
 
+local _eventArgLookup = {};
+
 function APII:UpdateEventTraceTooltip()
 	local tooltip = _G["EventTraceTooltip"];
-	local index = 1;
-	local line = _G["EventTraceTooltipTextLeft"..index];
+	local lineIndex = 1;
+	local line = _G["EventTraceTooltipTextLeft"..lineIndex];
 	local eventName = line:GetText();
 	
-	if (not eventName or not _EventArgLookup[eventName]) then
+	if (not eventName or not _eventArgLookup[eventName]) then
 		return;
 	end
-	local args = _EventArgLookup[eventName];
-	
+
+	local args = _eventArgLookup[eventName];
+
 	while (line) do
 		local lineText = line:GetText();
 		if (not lineText) then return; end
@@ -523,8 +522,8 @@ function APII:UpdateEventTraceTooltip()
 			line:SetText(ARGUMENT_LABEL_FORMAT_NEW:format(argIndex, args[argIndex].Name));
 		end
 		
-		index = index + 1;
-		line = _G["EventTraceTooltipTextLeft"..index];
+		lineIndex = lineIndex + 1;
+		line = _G["EventTraceTooltipTextLeft"..lineIndex];
 	end
 end
 
@@ -563,11 +562,7 @@ function APII:OnEnable()
 	end
 	
 	for k, v in ipairs(APIDocumentation.events) do
-		_EventArgLookup[v.LiteralName] = v.Payload
-	end
-	
-	if (LDHDebug) then
-		LDHDebug:Monitor(_addonName);
+		_eventArgLookup[v.LiteralName] = v.Payload
 	end
 end
 
@@ -580,6 +575,15 @@ APII.events:RegisterEvent("PLAYER_REGEN_DISABLED");
 APII.events:RegisterEvent("PLAYER_REGEN_ENABLED");
 APII.events:RegisterEvent("ADDON_LOADED");
 APII.events:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
+
+local function addArgs(args, index, ...)
+   for i = 1, select("#", ...) do
+      if not args[i] then
+         args[i] = {}
+      end
+      args[i][index] = select(i, ...)
+   end
+end
 
 function APII.events:ADDON_LOADED(addonName)
 	if (addonName == "Blizzard_DebugTools") then
@@ -621,67 +625,3 @@ local function slashcmd(msg, editbox)
 	end
 end
 SlashCmdList["APIISLASH"] = slashcmd
-
-
-
--- local l_debug = CreateFrame("frame", _addonName .. "Debug", UIParent);
-
--- local function GetDebugLine(lineIndex)
-	-- local lineContainer = l_debug.DependencyLines and l_debug.DependencyLines[lineIndex];
-	-- if lineContainer then
-		-- lineContainer:Show();
-		-- return lineContainer;
-	-- end
-	-- lineContainer = CreateFrame("FRAME", nil, l_debug, "APII_DebugLine");
-
-	-- return lineContainer;
--- end
-
--- local function ShowDebugHistory()
-	-- local mem = floor(l_debug.history[#l_debug.history]*100)/100;
-	-- for i=1, #l_debug.history-1, 1 do
-		-- local line = GetDebugLine(i);
-		-- line.Fill:SetStartPoint("BOTTOMLEFT", l_debug, (i-1)*1.4, l_debug.history[i]/10);
-		-- line.Fill:SetEndPoint("BOTTOMLEFT", l_debug, i*1.4, l_debug.history[i+1]/10);
-		-- line.Fill:SetVertexColor(1, 1, 1);
-		-- line.Fill:Show();
-	-- end
-	-- l_debug.text:SetText(mem)
--- end
-
--- l_debug:SetBackdrop({bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-      -- edgeFile = nil,
-	  -- tileSize = 0, edgeSize = 16,
-      -- insets = { left = 0, right = 0, top = 0, bottom = 0 }
-	  -- })
--- l_debug:SetFrameLevel(5)
--- l_debug:SetMovable(true)
--- l_debug:SetPoint("Center", 250, 0)
--- l_debug:RegisterForDrag("LeftButton")
--- l_debug:EnableMouse(true);
--- l_debug:SetScript("OnDragStart", l_debug.StartMoving)
--- l_debug:SetScript("OnDragStop", l_debug.StopMovingOrSizing)
--- l_debug:SetWidth(100)
--- l_debug:SetHeight(100)
--- l_debug:SetClampedToScreen(true)
--- l_debug.text = l_debug:CreateFontString(nil, nil, "GameFontWhiteSmall")
--- l_debug.text:SetPoint("BOTTOMLEFT", 2, 2)
--- l_debug.text:SetText("0000")
--- l_debug.text:SetJustifyH("left")
--- l_debug.time = 0;
--- l_debug.interval = 0.2;
--- l_debug.history = {}
--- l_debug:SetScript("OnUpdate", function(self,elapsed) 
-		-- self.time = self.time + elapsed;
-		-- if(self.time >= self.interval) then
-			-- self.time = self.time - self.interval;
-			-- UpdateAddOnMemoryUsage();
-			-- table.insert(self.history, GetAddOnMemoryUsage(_addonName));
-			-- if(#self.history > 50) then
-				-- table.remove(self.history, 1)
-			-- end
-			-- ShowDebugHistory()
-		-- end
-	-- end)
--- l_debug:Show()
-
