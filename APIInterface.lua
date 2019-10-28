@@ -1,10 +1,10 @@
 ﻿
 local _addonName, _addon = ...;
 
-local APII = LibStub("AceAddon-3.0"):NewAddon(_addonName);
+ APII = LibStub("AceAddon-3.0"):NewAddon(_addonName);
 
 local LISTITEM_HEIGHT = 34;
-local LISTITEM_EXPAND_MARGIN = 43;
+local LISTITEM_EXPAND_MARGIN = 48;
 local SEARCH_CUTOFF_AMOUNT = 1000;
 local FORMAT_SEARCH_CUTOFF_CHANGED = "Search cutoff changed to %d for this session.";
 local FORMAT_SEARCH_CUTOFF = "Searched stopped after %d results."
@@ -102,7 +102,7 @@ function APII:GetUndocumentedFunctions(system)
 	if(global) then
 		for name, v in pairs(global) do
 			if (not MatchContainsFunction(list, name)) then
-				tinsert(APII[namespace], {["Name"] = namespace.."."..name, ["Type"] = "Function", ["Undocumented"] = true});
+				tinsert(APII[namespace], {["Name"] = namespace.."."..name, ["Type"] = "Function", ["undocumented"] = true});
 			end
 		end
 	end
@@ -111,13 +111,13 @@ function APII:GetUndocumentedFunctions(system)
 end
 
 function APII:UpdateSearchResults()
-	if (not APIIListsSystemList.Undocumented) then
-		APIIListsSystemList.Undocumented = {}
+	if (not APIIListsSystemList.undocumented) then
+		APIIListsSystemList.undocumented = {}
 	end
 	
 	local results = APIIListsSystemList.SearchResults;
 	local matches;
-	local undocumented = APIIListsSystemList.Undocumented ;
+	local undocumented = APIIListsSystemList.undocumented ;
 	
 	wipe(results);
 	wipe(undocumented);
@@ -351,7 +351,7 @@ function APII:FindSelection()
 	-- Searching backwards as we are most likely looking for a table, which are at the back = less looping
 	for i=#APII.currentList, 1, -1 do
 		info = APII.currentList[i];
-		if info:GetFullName() == APIIListsSystemList.Opened then
+		if (not info.undocumented and info:GetFullName() == APIIListsSystemList.Opened) then
 			return (i-1) * LISTITEM_HEIGHT;
 		end
 	end
@@ -449,7 +449,7 @@ function APII:UpdateSystemList()
 		button.selected = false;
 		button.highlight:Hide();
 		button:SetEnabled(false);
-		button.background:SetVertexColor(1, 1, 1);
+		button.background:SetVertexColor(.6, .6, .6);
 		
 		if ( displayIndex <= #list) then
 			button:Show();
@@ -457,14 +457,14 @@ function APII:UpdateSystemList()
 			button.Api = info;
 			button.Key = displayIndex;
 			button.index = displayIndex;
-			button:SetEnabled(not info.Undocumented);
-			if(info.Undocumented) then
+			button:SetEnabled(not info.undocumented);
+			if(info.undocumented) then
 				button.Name:SetText(FORMAT_UNDOCUMENTED_TITLE:format(info.Name));
 				button.background:SetVertexColor(.25, .25, .25);
 			else
 				button.Type = info:GetType();
 				button.Name:SetText(info:GetSingleOutputLine())
-				if info.Type ~= "System" and scrollFrame.Opened == info:GetFullName()  then
+				if (info.Type ~= "System" and scrollFrame.Opened == info:GetFullName())  then
 					button.selected = true;
 					button.ClipboardString:Show();
 					button.ClipboardString:SetText(info.LiteralName and info.LiteralName or  info:GetClipboardString());
@@ -553,7 +553,7 @@ function APII:OnEnable()
 		end;
 	APIIListsSystemList.SearchString = "";
 	APIIListsSystemList.SearchResults = {};
-	APIIListsSystemList.Undocumented = {};
+	APIIListsSystemList.undocumented = {};
 	APIIListsSystemList.Opened = "";
 	APII:UpdateSystemList();
 	
@@ -618,6 +618,10 @@ local function slashcmd(msg, editbox)
 	else
 		if (not InCombatLockdown()) then
 			ShowUIPanel(APII_Core);
+			if (msg ~= "") then
+				APII_Core:FilterClearButton_OnClick()
+				APIILists.searchBox:SetText(msg)
+			end
 		else
 			print(ERROR_COMBAT:format(_addonName));
 			APII.openDuringCombat = true;

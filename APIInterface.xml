@@ -7,16 +7,7 @@
 	<Include file="libs\AceAddon-3.0\AceAddon-3.0.xml"/>
 	
 	<Script file="APIInterface.lua"/>
-	
-	<!--
-	<Frame name="APII_DebugLine" parentArray="DependencyLines" virtual="true">
-		<Layers>
-			<Layer level="OVERLAY" textureSubLevel="-2">
-				<Line parentKey="Fill" file="Interface/Artifacts/_Artifacts-DependencyBar-Fill" thickness="4" horizTile="true" alpha="1" />
-			</Layer>
-		</Layers>
-	</Frame>
-	-->
+
 	<Frame name="APII_InsetTemplate" inherits="InsetFrameTemplate" virtual="true">
 		<Layers>
 			<Layer level="OVERLAY">
@@ -196,7 +187,7 @@
 				
 				<FontString inherits="GameFontWhiteSmall" maxLines="1" hidden="true" justifyH="LEFT" justifyV="MIDDLE" parentKey="ClipboardInfo" text="Clipboard:">
 					<Anchors>
-						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" relativePoint="BOTTOMLEFT" x="30" y="-8"/>
+						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" relativePoint="BOTTOMLEFT" x="26" y="-8"/>
 					</Anchors>
 				</FontString>
 				
@@ -213,7 +204,7 @@
 		</Layers>
 
 		<Frames>
-			<EditBox parentKey="ClipboardString" inherits="InputBoxTemplate" hidden="true"> 
+			<EditBox parentKey="ClipboardString" inherits="InputBoxTemplate" hidden="true" autoFocus="false"> 
 				<Size y="20"/>
 				<Anchors>
 					<Anchor point="LEFT" relativeKey="$parent.ClipboardInfo" relativePoint="RIGHT" x="15"/>
@@ -241,22 +232,20 @@
 				</Animations>
 				
 				<Scripts>
-					<Onload>
-						self:SetAutoFocus(false);
-					</Onload>
 					<OnEnterPressed>
 						self:ClearFocus();
 					</OnEnterPressed>
-					<OnKeyUp>
-						if (key == "C" and IsControlKeyDown()) then
+					<OnKeyDown>
+						if (IsControlKeyDown() and (key == "C" or key == "X")) then
 							self.CheckAnim:Stop();
-							self:ClearFocus();
 							self.CheckAnim:Play();
 							PlaySound(SOUNDKIT.TUTORIAL_POPUP);
+							<!-- Delay until next frame or it will prevent the actual copy -->
+							C_Timer.After(0, function() self:ClearFocus(); end);
 						end
-					</OnKeyUp>
+					</OnKeyDown>
 					<OnTextChanged>
-						if userInput then
+						if (userInput) then
 							self:SetText(self:GetParent().Api:GetClipboardString());
 							self:HighlightText();
 						end
@@ -267,7 +256,7 @@
 			<SimpleHTML parentKey="Details">
 					<size x="450" y="500"/>
 					<Anchors>
-						<Anchor point="TOP" relativeKey="$parent.ClipboardString" relativePoint="BOTTOM"  y="-5"/>
+						<Anchor point="TOP" relativeKey="$parent.ClipboardString" relativePoint="BOTTOM"  y="-10"/>
 						<Anchor point="LEFT" x="30"/>
 						<Anchor point="RIGHT" x="30"/>
 						<!--<Anchor point="BOTTOMLEFT" x="30" y="13"/>
@@ -668,7 +657,7 @@
 							<OnMouseUp>
 								self.texture:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0);
 							</OnMouseUp>
-							<OnClick> <!-- function="APII_FilterClearButton_OnClick" />-->
+							<OnClick>
 								self:GetParent():GetParent():GetParent():FilterClearButton_OnClick();
 							</OnClick>
 						</Scripts>
