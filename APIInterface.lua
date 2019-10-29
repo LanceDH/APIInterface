@@ -1,8 +1,9 @@
 ﻿
 local _addonName, _addon = ...;
 
- APII = LibStub("AceAddon-3.0"):NewAddon(_addonName);
+APII = LibStub("AceAddon-3.0"):NewAddon(_addonName);
 
+local HISTORY_MAX = 50;
 local LISTITEM_HEIGHT = 34;
 local LISTITEM_EXPAND_MARGIN = 48;
 local SEARCH_CUTOFF_AMOUNT = 1000;
@@ -26,12 +27,20 @@ local DETAILS_NO_PUBLIC = "This function does nothing in public clients";
 local DETAILS_NO_PUBLIC_REPLACE = "|cffff0000This function does nothing in public clients|r";
 local ARGUMENT_LABEL_FORMAT = "arg (%d+):";
 local ARGUMENT_LABEL_FORMAT_NEW = "%d. %s:";
+local SIMPLEHTML_SPACE = "|c00000000 |r";
 
 local _includeUndocumented = true;
 
-----------
--- Code
-----------
+------------------------------------
+-- General
+------------------------------------
+-- APII_Resize_OnMouseUp(self, button)
+-- APII_Resize_OnMouseDown(self, button)
+-- APII_List_OnClick(self, button)
+-- MatchContainsFunction(list, entry)
+-- APII:GetUndocumentedFunctions(system)
+-- APII:UpdateSearchResults()
+-- IsSearchMatch(key, value, search, objType, wantFrames)
 
 local function APII_Resize_OnMouseUp(self, button)
 	if (button == "LeftButton") then
@@ -57,22 +66,20 @@ function APII_List_OnClick(self, button)
 	if (self.Type ~= "system" ) then
 		if ( self.selected ) then
 			self.selected = nil;
-			APIIListsSystemList.Opened = "";
 			self:SetHeight(LISTITEM_HEIGHT);
 			HybridScrollFrame_CollapseButton(APIIListsSystemList);
-			APII:UpdateSystemList();
+			-- Stay in the same system but clear the current open
+			APIILists:OpenSystem(APIIListsSystemList.InSystem);
 		else
-			APIIListsSystemList.Opened = self.Api:GetFullName();
 			self.Details:SetText(table.concat(self.Api:GetDetailedOutputLines(), "\n", 2));
 			self:SetHeight(LISTITEM_HEIGHT + LISTITEM_EXPAND_MARGIN + self.Details:GetHeight());
-			APII:UpdateSystemList();
+			APIILists:OpenSystem(self.Api);
 			APII:AdjustSelection();
-			
 		end
 	else
-		APIIListsSystemList.InSystem = self.Api;
 		APIIListsSystemList.SystemScroll = APIIListsSystemListScrollBar:GetValue();
-		APII:UpdateSystemList();
+		APIIListsSystemList.InSystem = self.Api
+		APIILists:OpenSystem(self.Api);
 		APIILists.searchBox:SetText("");
 		APIIListsSystemListScrollBar:SetValue(0);
 	end
@@ -209,23 +216,103 @@ local function IsSearchMatch(key, value, search, objType, wantFrames)
 	return key:lower():find(search:lower()) 
 end
 
+------------------------------------
+-- APII_COREMIXIN
+------------------------------------
+-- OnLoad()
+-- UpdateHistoryButtons()
+-- AddHistory()
+-- StepHistory(delta)
+-- OpenSystem(api)
+
+APII_LISTSMIXIN = {};
+
+function APII_LISTSMIXIN:OnLoad()
+	self.history = {{}};
+	self.historyIndex = 1;
+	self:UpdateHistoryButtons();
+end
+
+function APII_LISTSMIXIN:UpdateHistoryButtons()
+	self.HistoryBackButton:SetEnabled(#self.history - self.historyIndex > 0);
+	self.HistoryForwardButton:SetEnabled(self.historyIndex > 1);
+end
+
+function APII_LISTSMIXIN:AddHistory()
+	tinsert(self.history, 1, {["system"] = APIIListsSystemList.InSystem, ["api"] = APIIListsSystemList.Opened, ["search"] = APIILists.searchBox:GetText()});
+	if (#self.history > HISTORY_MAX) then
+		self.history[#self.history] = nil
+	end
+	
+	self:UpdateHistoryButtons();
+end
+
+function APII_LISTSMIXIN:StepHistory(delta)
+	self.historyIndex = self.historyIndex + delta;
+	self.historyIndex = max(1, min(self.historyIndex, #self.history));
+	
+	APIIListsSystemList.InSystem = self.history[self.historyIndex].system;
+	APIIListsSystemList.Opened = self.history[self.historyIndex].api;
+	APIILists.searchBox:SetText(self.history[self.historyIndex].search or "")
+	APII:UpdateSystemList();
+	APII:AdjustSelection();
+	APII:UpdateFilterBar();
+	self:UpdateHistoryButtons();
+end
+
+function APII_LISTSMIXIN:OpenSystem(api)
+	for i= self.historyIndex-1, 1, -1 do
+		tremove(self.history, i);
+	end
+
+	self.historyIndex = 1;
+	if (not api) then
+		APIIListsSystemList.Opened = nil;
+		APIIListsSystemList.InSystem = nil;
+	elseif (api.Type == "System") then
+		APIIListsSystemList.Opened = nil;
+		APIIListsSystemList.InSystem = api;
+	else
+		APIIListsSystemList.Opened = api;
+		APIIListsSystemList.InSystem = api.System;
+	end
+
+	self:AddHistory();
+	APII:UpdateSystemList();
+	APII:UpdateFilterBar();
+end
+
+------------------------------------
+-- APII_COREMIXIN
+------------------------------------
+-- OnLoad()
+-- HandleHyperlink(self, link, text, button)
+-- Search_OnTextChanged(searchBox, userInput)
+-- GlobalSearch_OnClick(objType, wantFrames)
+-- GlobalSearch_OnEnter(frame, objType)
+-- CheckDocumented_OnClick(button)
+-- CheckDocumented_OnEnter(button)
+-- FilterClearButton_OnClick(self)
+
 APII_COREMIXIN = {};
+
+function APII_COREMIXIN:OnLoad()
+	self:SetClampedToScreen(true);
+	self.TitleText:SetText("APIInterface");
+	self:RegisterForDrag("LeftButton");
+	self:SetMinResize(250, 200);
+end
 
 function APII_COREMIXIN:HandleHyperlink(self, link, text, button)
 	local apiType, name, system = link:match("api:(%a+):(%a+):(%a*):?") ;
 	local apiInfo = APIDocumentation:FindAPIByName(apiType, name, system);
 	
 	if apiType == "system"  and APIIListsSystemList.InSystem ~= apiInfo then
-		APIIListsSystemList.InSystem = apiInfo
-		APII:UpdateSystemList();
+		APIILists:OpenSystem(apiInfo)
 		APIILists.searchBox:SetText("");
 		APIIListsSystemListScrollBar:SetValue(0);
 	elseif apiType == "table" then
-		
-		APIIListsSystemList.InSystem = apiInfo.System;
-		APII:UpdateSystemList();
-
-		APIIListsSystemList.Opened = apiInfo:GetFullName();
+		APIILists:OpenSystem(apiInfo)
 		
 		if 	APIILists.searchBox:GetText() == "" then
 			-- If we open something that is currently visible
@@ -242,7 +329,7 @@ end
 function APII_COREMIXIN:Search_OnTextChanged(searchBox, userInput)
 	local searchString = searchBox:GetText();
 	APIIListsSystemList.SearchString = searchString;
-	-- Make 'Search' text disapear when needed
+	-- Make 'Search' text disappear when needed
 	SearchBoxTemplate_OnTextChanged(searchBox);
 	-- protect against malformed pattern
 	if not pcall(function() APIDocumentation:FindAllAPIMatches(searchString) end) then 
@@ -258,6 +345,7 @@ function APII_COREMIXIN:Search_OnTextChanged(searchBox, userInput)
 		APII:ResetListButtons();
 	
 		APII:UpdateSearchResults();
+		APIILists:AddHistory();
 	end
 	APII:UpdateSystemList();
 	APII:AdjustSelection();
@@ -328,13 +416,22 @@ end
 
 function APII_COREMIXIN:FilterClearButton_OnClick(self)
 	APIIListsSystemListScrollBar:SetValue(0);	
-	APIIListsSystemList.InSystem = nil;
 	HybridScrollFrame_CollapseButton(APIIListsSystemList);
-	APII:UpdateSystemList();
+	APIILists:OpenSystem();
 	APII:UpdateFilterBar();
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
 	APIIListsSystemListScrollBar:SetValue(APIIListsSystemList.SystemScroll or 0);
 end
+
+------------------------------------
+-- APII
+------------------------------------
+-- ResetFrame()
+-- FindSelection()
+-- AdjustSelection()
+-- ResetListButtons()
+-- UpdateFilterBar()
+-- UpdateSystemList()
 
 function APII:ResetFrame()
 	APII_Core:SetSize(600, 450);
@@ -351,22 +448,16 @@ function APII:FindSelection()
 	-- Searching backwards as we are most likely looking for a table, which are at the back = less looping
 	for i=#APII.currentList, 1, -1 do
 		info = APII.currentList[i];
-		if (not info.undocumented and info:GetFullName() == APIIListsSystemList.Opened) then
+		if (not info.undocumented and info == APIIListsSystemList.Opened) then
 			return (i-1) * LISTITEM_HEIGHT;
 		end
 	end
-	
-	-- for k, v in ipairs(APII.currentList) do
-		-- if v:GetFullName() == APIIListsSystemList.Opened then
-			-- return (k-1) * LISTITEM_HEIGHT;
-		-- end
-	-- end
-	
+
 	return nil;
 end
 
 function APII:AdjustSelection()
-	if APIIListsSystemList.Opened == "" or APIIListsSystemList.Adjusting then return; end
+	if (not APIIListsSystemList.Opened or APIIListsSystemList.Adjusting) then return; end
 	local selectedButton;	
 	APIIListsSystemList.Adjusting = true;
 	local newHeight;
@@ -406,7 +497,8 @@ end
 
 function APII:ResetListButtons()
 	HybridScrollFrame_CollapseButton(APIIListsSystemList);
-	APIIListsSystemList.Opened = "";
+	APIIListsSystemList.Opened = nil;
+	
 	APIIListsSystemList.ExpandedHeight = nil;
 end
 
@@ -464,7 +556,7 @@ function APII:UpdateSystemList()
 			else
 				button.Type = info:GetType();
 				button.Name:SetText(info:GetSingleOutputLine())
-				if (info.Type ~= "System" and scrollFrame.Opened == info:GetFullName())  then
+				if (info.Type ~= "System" and scrollFrame.Opened == info)  then
 					button.selected = true;
 					button.ClipboardString:Show();
 					button.ClipboardString:SetText(info.LiteralName and info.LiteralName or  info:GetClipboardString());
@@ -472,8 +564,16 @@ function APII:UpdateSystemList()
 					button.Details:Show();
 					button.highlight:Show();
 					local details = "<html><body><p>";
+					
 					details = details .. table.concat(info:GetDetailedOutputLines(), "<br/>", 2)
 					details = details:gsub(DETAILS_NO_PUBLIC, DETAILS_NO_PUBLIC_REPLACE);
+					-- Redo indentation to work in simplehtml
+					-- We want to remove 1 (3 spaces) because each line has a default of 1 indentation
+					details = details:gsub("(    +)", function (a)
+						local spaces = a:len();
+						spaces = spaces - 3;
+						return SIMPLEHTML_SPACE:rep(spaces);
+					end);
 					
 					details = details .. "</p></body></html>"
 					
@@ -554,7 +654,7 @@ function APII:OnEnable()
 	APIIListsSystemList.SearchString = "";
 	APIIListsSystemList.SearchResults = {};
 	APIIListsSystemList.undocumented = {};
-	APIIListsSystemList.Opened = "";
+	APIIListsSystemList.Opened = nil;
 	APII:UpdateSystemList();
 	
 	for k, system in ipairs(APIDocumentation.systems) do
@@ -621,6 +721,7 @@ local function slashcmd(msg, editbox)
 			if (msg ~= "") then
 				APII_Core:FilterClearButton_OnClick()
 				APIILists.searchBox:SetText(msg)
+				APIILists:AddHistory();
 			end
 		else
 			print(ERROR_COMBAT:format(_addonName));
