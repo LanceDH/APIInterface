@@ -248,8 +248,16 @@ function APII_LISTSMIXIN:AddHistory()
 end
 
 function APII_LISTSMIXIN:StepHistory(delta)
-	self.historyIndex = self.historyIndex + delta;
-	self.historyIndex = max(1, min(self.historyIndex, #self.history));
+	if (IsShiftKeyDown()) then
+		if (delta > 0) then
+			self.historyIndex = #self.history;
+		else
+			self.historyIndex = 1;
+		end
+	else
+		self.historyIndex = self.historyIndex + delta;
+		self.historyIndex = max(1, min(self.historyIndex, #self.history));
+	end
 	
 	APIIListsSystemList.InSystem = self.history[self.historyIndex].system;
 	APIIListsSystemList.Opened = self.history[self.historyIndex].api;

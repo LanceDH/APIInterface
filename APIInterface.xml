@@ -478,6 +478,15 @@
 					<OnClick>
 						self:GetParent():StepHistory(1);
 					</OnClick>
+					<OnEnter>
+						GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+						GameTooltip:SetText("Back In History");
+						GameTooltip:AddLine("Hold shift to go to the very end.", 1, 1, 1, true);
+						GameTooltip:Show();
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide();
+					</OnLeave>
 				</Scripts>
 				<NormalTexture file="Interface\Glues\Common\Glue-LeftArrow-Button-Up"/>
 				<PushedTexture file="Interface\Glues\Common\Glue-LeftArrow-Button-Down"/>
@@ -496,6 +505,15 @@
 					<OnClick>
 						self:GetParent():StepHistory(-1);
 					</OnClick>
+					<OnEnter>
+						GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+						GameTooltip:SetText("Forward In History");
+						GameTooltip:AddLine("Hold shift to go to the very front.", 1, 1, 1, true);
+						GameTooltip:Show();
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide();
+					</OnLeave>
 				</Scripts>
 				<NormalTexture file="Interface\Glues\Common\Glue-RightArrow-Button-Up"/>
 				<PushedTexture file="Interface\Glues\Common\Glue-RightArrow-Button-Down"/>
