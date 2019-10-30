@@ -8,6 +8,18 @@
 	
 	<Script file="APIInterface.lua"/>
 
+	<Button name="APII_SearchButtonTemplate" inherits="UIMenuButtonStretchTemplate" frameStrata="HIGH" virtual="true">
+		<Size x="70" y="22"/>
+		<Scripts>
+			<OnLoad>
+				self:SetEnabled(false);
+			</OnLoad>
+			<OnLeave> 
+				GameTooltip:Hide();
+			</OnLeave>
+		</Scripts>				
+	</Button>
+	
 	<Frame name="APII_InsetTemplate" inherits="InsetFrameTemplate" virtual="true">
 		<Layers>
 			<Layer level="OVERLAY">
@@ -164,20 +176,9 @@
 					</Anchors>
 					<TexCoords left="0" right="1" top="0.123046875" bottom="0.2060546875"/>
 				</Texture>				
-			<!--
-				<Texture file="Interface\FrameGeneral\UI-Background-Marble" vertTile="true" horizTile="true" parentKey="HeaderBG">
-					<Anchors>
-						<Anchor point="TOPLEFT" x="2" y="-1"/>
-						<Anchor point="BOTTOMRIGHT" relativePoint="TOPRIGHT" x="-2"  y="-31" />
-					</Anchors>
-				</Texture>
-				-->
 			</Layer>
 
 			<Layer level="ARTWORK">						
-			
-				
-				
 				<FontString name="$parentName" inherits="GameFontWhite" maxLines="1" hidden="false" justifyH="LEFT" justifyV="MIDDLE" parentKey="Name">
 					<Anchors>
 						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" x="20" />
@@ -185,7 +186,7 @@
 					</Anchors>
 				</FontString>
 				
-				<FontString inherits="GameFontWhiteSmall" maxLines="1" hidden="true" justifyH="LEFT" justifyV="MIDDLE" parentKey="ClipboardInfo" text="Clipboard:">
+				<FontString inherits="GameFontWhite" maxLines="1" hidden="true" justifyH="LEFT" justifyV="MIDDLE" parentKey="ClipboardInfo" text="Clipboard:">
 					<Anchors>
 						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" relativePoint="BOTTOMLEFT" x="26" y="-8"/>
 					</Anchors>
@@ -207,7 +208,7 @@
 			<EditBox parentKey="ClipboardString" inherits="InputBoxTemplate" hidden="true" autoFocus="false"> 
 				<Size y="20"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeKey="$parent.ClipboardInfo" relativePoint="RIGHT" x="15"/>
+					<Anchor point="LEFT" relativeKey="$parent.ClipboardInfo" relativePoint="RIGHT" x="10"/>
 					<Anchor point="RIGHT" x="-35"/>
 				</Anchors>
 				
@@ -259,9 +260,6 @@
 						<Anchor point="TOP" relativeKey="$parent.ClipboardString" relativePoint="BOTTOM"  y="-10"/>
 						<Anchor point="LEFT" x="30"/>
 						<Anchor point="RIGHT" x="30"/>
-						<!--<Anchor point="BOTTOMLEFT" x="30" y="13"/>
-						<Anchor point="BOTTOMRIGHT" x="-20" y="13"/>
-						-->
 					</Anchors>
 					<FontString inherits="GameFontWhite" hidden="true" justifyH="LEFT" justifyV="MIDDLE"  spacing="3" nonspacewrap="true" />
 					
@@ -406,39 +404,6 @@
 		<Anchors>
 			<Anchor point="CENTER" x="0" y="0"/>
 		</Anchors>
-		
-		<!--
-		<Frames>
-			<Frame parentKey="Resize">
-				<Size x="15" y="15" />
-				<Anchors>
-					<Anchor point="BOTTOMRIGHT" x="0" y="0"/>
-				</Anchors>
-				<Layers>
-					<Layer level="ARTWORK">
-						<Texture parentKey="Art" file="Interface\CHATFRAME\UI-ChatIM-SizeGrabber-Up" alpha="1">
-						</Texture>
-					</Layer>
-					
-					<Layer level="HIGHLIGHT">
-						<Texture parentKey="Art" file="Interface\CHATFRAME\UI-ChatIM-SizeGrabber-Highlight" alpha="1">
-						</Texture>
-					</Layer>
-				</Layers>
-				<Scripts>
-					<OnMouseDown function="APII_Resize_OnMouseDown"/>
-					<OnMouseUp function="APII_Resize_OnMouseUp"/>
-					<OnEnter>
-						self.Art:SetAlpha(1);
-					</OnEnter>
-					<OnLeave>
-						self.Art:SetAlpha(1);
-					</OnLeave>
-				</Scripts>
-			</Frame>
-		</Frames>
-		-->
-		
 		<Scripts>
 			<OnLoad method="OnLoad"/>
 			<OnShow>
@@ -559,105 +524,69 @@
 					</OnLeave>
 				</Scripts>
 			</CheckButton>
-			<Button parentKey="buttonFunctions" inherits="UIMenuButtonStretchTemplate" text="Functions" frameStrata="HIGH">
-				<Size x="70" y="22"/>
-
+			<Button parentKey="buttonFunctions" inherits="APII_SearchButtonTemplate" text="Functions" >
 				<Anchors>
 					<Anchor point="LEFT" relativeKey="$parent.checkUndocumented" relativePoint="RIGHT" x="0" y="1"/>
 				</Anchors>
 				<Scripts>
-					<OnLoad>
-						self:SetEnabled(false);
-					</OnLoad>
 					<OnClick> 
 						APII_Core:GlobalSearch_OnClick("function");
 					</OnClick>	
 					<OnEnter> 
 						APII_Core:GlobalSearch_OnEnter(self, "function");
 					</OnEnter>
-					<OnLeave> 
-						GameTooltip:Hide();
-					</OnLeave>
 				</Scripts>				
 			</Button>
-			<Button parentKey="buttonTables" inherits="UIMenuButtonStretchTemplate" text="Tables" frameStrata="HIGH">
-				<Size x="70" y="22"/>
+			<Button parentKey="buttonTables" inherits="APII_SearchButtonTemplate" text="Tables">
 				<Anchors>
 					<Anchor point="LEFT" relativeKey="$parent.buttonFunctions" relativePoint="RIGHT" x="1" />
 				</Anchors>
 				<Scripts>
-					<OnLoad>
-						self:SetEnabled(false);
-					</OnLoad>
 					<OnClick> 
 						APII_Core:GlobalSearch_OnClick("table");
 					</OnClick>	
 					<OnEnter> 
 						APII_Core:GlobalSearch_OnEnter(self, "table");
 					</OnEnter>
-					<OnLeave> 
-						GameTooltip:Hide();
-					</OnLeave>
 				</Scripts>				
 			</Button>
-			<Button parentKey="buttonFrames" inherits="UIMenuButtonStretchTemplate" text="Frames" frameStrata="HIGH">
-				<Size x="70" y="22"/>
+			<Button parentKey="buttonFrames" inherits="APII_SearchButtonTemplate" text="Frames">
 				<Anchors>
 					<Anchor point="LEFT" relativeKey="$parent.buttonTables" relativePoint="RIGHT" x="1" />
 				</Anchors>
 				<Scripts>
-					<OnLoad>
-						self:SetEnabled(false);
-					</OnLoad>
 					<OnClick> 
 						APII_Core:GlobalSearch_OnClick("table", true);
 					</OnClick>	
 					<OnEnter> 
 						APII_Core:GlobalSearch_OnEnter(self, "frame");
 					</OnEnter>
-					<OnLeave> 
-						GameTooltip:Hide();
-					</OnLeave>
 				</Scripts>				
 			</Button>
-			<Button parentKey="buttonStrings" inherits="UIMenuButtonStretchTemplate" text="Strings" frameStrata="HIGH">
-				<Size x="70" y="22"/>
+			<Button parentKey="buttonStrings" inherits="APII_SearchButtonTemplate" text="Strings">
 				<Anchors>
 					<Anchor point="LEFT" relativeKey="$parent.buttonFrames" relativePoint="RIGHT" x="1" />
 				</Anchors>
 				<Scripts>
-					<OnLoad>
-						self:SetEnabled(false);
-					</OnLoad>
 					<OnClick> 
 						APII_Core:GlobalSearch_OnClick("string");
 					</OnClick>
 					<OnEnter> 
 						APII_Core:GlobalSearch_OnEnter(self, "string");
 					</OnEnter>
-					<OnLeave> 
-						GameTooltip:Hide();
-					</OnLeave>
 				</Scripts>				
 			</Button>
-			<Button parentKey="ButtonValues" inherits="UIMenuButtonStretchTemplate" text="Values" frameStrata="HIGH">
-				<Size x="70" y="22"/>
+			<Button parentKey="ButtonValues" inherits="APII_SearchButtonTemplate" text="Values">
 				<Anchors>
 					<Anchor point="LEFT" relativeKey="$parent.buttonStrings" relativePoint="RIGHT" x="1" />
 				</Anchors>
 				<Scripts>
-					<OnLoad>
-						self:SetEnabled(false);
-					</OnLoad>
 					<OnClick> 
 						APII_Core:GlobalSearch_OnClick("value");
 					</OnClick>
 					<OnEnter> 
 						APII_Core:GlobalSearch_OnEnter(self, "value");
 					</OnEnter>
-					<OnLeave> 
-						GameTooltip:Hide();
-					</OnLeave>
 				</Scripts>				
 			</Button>
 			<Frame parentKey="filterBar">

@@ -132,8 +132,8 @@ function APII:UpdateSearchResults()
 	
 	if APIIListsSystemList.InSystem then
 		local namespace = APIIListsSystemList.InSystem.Namespace;
-			undocumented = self:GetUndocumentedFunctions(APIIListsSystemList.InSystem);
-		if APIIListsSystemList.SearchString == "" then
+		undocumented = self:GetUndocumentedFunctions(APIIListsSystemList.InSystem);
+		if (APIIListsSystemList.SearchString == "") then
 			matches = APIIListsSystemList.InSystem:ListAllAPI();
 		else
 			matches = APIIListsSystemList.InSystem:FindAllAPIMatches(APIIListsSystemList.SearchString);
@@ -239,11 +239,34 @@ function APII_LISTSMIXIN:UpdateHistoryButtons()
 end
 
 function APII_LISTSMIXIN:AddHistory()
-	tinsert(self.history, 1, {["system"] = APIIListsSystemList.InSystem, ["api"] = APIIListsSystemList.Opened, ["search"] = APIILists.searchBox:GetText()});
+	local currSys = APIIListsSystemList.InSystem;
+	local currApi =  APIIListsSystemList.Opened;
+	local currSearch = APIILists.searchBox:GetText();
+	
+	-- Remove any history after the current point. We're rewriting history.
+	for i= self.historyIndex-1, 1, -1 do
+		tremove(self.history, i);
+	end
+	
+	tinsert(self.history, 1, {["system"] = currSys, ["api"] = currApi, ["search"] = currSearch});
 	if (#self.history > HISTORY_MAX) then
 		self.history[#self.history] = nil
 	end
 	
+	-- Remove in between search changes
+	if (self.historyIndex == 1 and #self.history > 3) then
+		local first = self.history[1];
+		local second = self.history[2];
+		local third = self.history[3];
+		if (first.system == second.system and first.system == third.system and first.api == second.api and first.api == third.api) then
+			tremove(self.history, 2);
+			-- If start and end search is the same (typed and then deleted) remove one of them
+			if (first.search == third.search) then
+				tremove(self.history, 2);
+			end
+		end
+	end
+	self.historyIndex = 1;
 	self:UpdateHistoryButtons();
 end
 
@@ -254,7 +277,7 @@ function APII_LISTSMIXIN:StepHistory(delta)
 		else
 			self.historyIndex = 1;
 		end
-	else
+	elseif (delta ~= 0) then
 		self.historyIndex = self.historyIndex + delta;
 		self.historyIndex = max(1, min(self.historyIndex, #self.history));
 	end
@@ -262,18 +285,13 @@ function APII_LISTSMIXIN:StepHistory(delta)
 	APIIListsSystemList.InSystem = self.history[self.historyIndex].system;
 	APIIListsSystemList.Opened = self.history[self.historyIndex].api;
 	APIILists.searchBox:SetText(self.history[self.historyIndex].search or "")
-	APII:UpdateSystemList();
+	--APII:UpdateSystemList();
 	APII:AdjustSelection();
 	APII:UpdateFilterBar();
 	self:UpdateHistoryButtons();
 end
 
 function APII_LISTSMIXIN:OpenSystem(api)
-	for i= self.historyIndex-1, 1, -1 do
-		tremove(self.history, i);
-	end
-
-	self.historyIndex = 1;
 	if (not api) then
 		APIIListsSystemList.Opened = nil;
 		APIIListsSystemList.InSystem = nil;
@@ -283,6 +301,10 @@ function APII_LISTSMIXIN:OpenSystem(api)
 	else
 		APIIListsSystemList.Opened = api;
 		APIIListsSystemList.InSystem = api.System;
+		if (not api.System) then
+			print("Setting search to", api.Name);
+			APIILists.searchBox:SetText(api.Name);
+		end
 	end
 
 	self:AddHistory();
@@ -316,21 +338,13 @@ function APII_COREMIXIN:HandleHyperlink(self, link, text, button)
 	local apiInfo = APIDocumentation:FindAPIByName(apiType, name, system);
 	
 	if apiType == "system"  and APIIListsSystemList.InSystem ~= apiInfo then
-		APIILists:OpenSystem(apiInfo)
+		APIILists:OpenSystem(apiInfo);
 		APIILists.searchBox:SetText("");
 		APIIListsSystemListScrollBar:SetValue(0);
 	elseif apiType == "table" then
-		APIILists:OpenSystem(apiInfo)
-		
-		if 	APIILists.searchBox:GetText() == "" then
-			-- If we open something that is currently visible
-			APII:UpdateSystemList();
-			APII:AdjustSelection();
-		else
-			-- Search_OnTextChanged handles the list update
-			APIILists.searchBox:SetText("");	
-		end
-		
+		APIILists.searchBox:SetText("");
+		APIILists:OpenSystem(apiInfo);
+		APII:AdjustSelection();
 	end
 end
 
@@ -347,15 +361,12 @@ function APII_COREMIXIN:Search_OnTextChanged(searchBox, userInput)
 		searchBox:SetTextColor(1, 1, 1, 1);
 	end
 
-	
 	if (userInput) then
-		APIIListsSystemListScrollBar:SetValue(0);
-		APII:ResetListButtons();
-	
-		APII:UpdateSearchResults();
 		APIILists:AddHistory();
+		APIIListsSystemListScrollBar:SetValue(0);
+		APII:UpdateSearchResults();
+		
 	end
-	APII:UpdateSystemList();
 	APII:AdjustSelection();
 	
 	APIILists.buttonFunctions:SetEnabled(searchString ~= "");
@@ -464,43 +475,44 @@ function APII:FindSelection()
 	return nil;
 end
 
-function APII:AdjustSelection()
-	if (not APIIListsSystemList.Opened or APIIListsSystemList.Adjusting) then return; end
-	local selectedButton;	
-	APIIListsSystemList.Adjusting = true;
-	local newHeight;
-	--check if selection is visible
-	for _, button in next, APIIListsSystemList.buttons do
-		if ( button.selected ) then
-			selectedButton = button;
-			break;
-		end
-	end	
+function APII:AdjustSelection(fromTimer)
+	APII:UpdateSystemList();
+	if (not APIIListsSystemList.Opened) then return; end
+	local selectedButton = APIILists.selectedButton;	
 	
+	-- If it's not currently visible, make it be
 	if ( not selectedButton ) then
-		-- Not one of the buttons visible, search in the list
-		newHeight = APII:FindSelection();
-	else
+		local scrollToHeight = APII:FindSelection();
+		if ( scrollToHeight ) then
+			-- Set the new scroll
+			local _, maxVal = APIIListsSystemListScrollBar:GetMinMaxValues();
+			scrollToHeight = min(scrollToHeight, maxVal);
+			APIIListsSystemListScrollBar:SetValue(scrollToHeight);	
+			-- Update the list (expands the button)
+			APII:UpdateSystemList();	
+			selectedButton = APIILists.selectedButton;
+		end
+	end
+	
+	if (selectedButton) then
+		local scrollToHeight;
 		-- One of the visible buttons, make it fit in the display window
 		if ( selectedButton:GetTop() > APIIListsSystemList:GetTop() ) then
-			newHeight = APIIListsSystemListScrollBar:GetValue() + APIIListsSystemList:GetTop() - selectedButton:GetTop();
+			scrollToHeight = APIIListsSystemListScrollBar:GetValue() + APIIListsSystemList:GetTop() - selectedButton:GetTop();
 		elseif ( selectedButton:GetBottom() < APIIListsSystemList:GetBottom() ) then
 			if ( selectedButton:GetHeight() > APIIListsSystemList:GetHeight() ) then
-				newHeight = APIIListsSystemListScrollBar:GetValue() + APIIListsSystemList:GetTop() - selectedButton:GetTop();
+				scrollToHeight = APIIListsSystemListScrollBar:GetValue() + APIIListsSystemList:GetTop() - selectedButton:GetTop();
 			else
-				newHeight = APIIListsSystemListScrollBar:GetValue() + APIIListsSystemList:GetBottom() - selectedButton:GetBottom();
+				scrollToHeight = APIIListsSystemListScrollBar:GetValue() + APIIListsSystemList:GetBottom() -  selectedButton:GetBottom();
 			end
 		end
+		
+		if ( scrollToHeight ) then
+			local _, maxVal = APIIListsSystemListScrollBar:GetMinMaxValues();
+			scrollToHeight = min(scrollToHeight, maxVal);
+			APIIListsSystemListScrollBar:SetValue(scrollToHeight);
+		end
 	end
-	
-	-- Set new height if any
-	if ( newHeight ) then
-		local _, maxVal = APIIListsSystemListScrollBar:GetMinMaxValues();
-		newHeight = min(newHeight, maxVal);
-		APIIListsSystemListScrollBar:SetValue(newHeight);				
-	end
-	
-	APIIListsSystemList.Adjusting = false;
 end
 
 function APII:ResetListButtons()
@@ -533,6 +545,9 @@ function APII:UpdateSystemList()
 	APII.currentList = list;
 	local heightStuff = LISTITEM_HEIGHT;
 	
+	HybridScrollFrame_CollapseButton(APIIListsSystemList);
+	APIILists.selectedButton = nil;
+	
 	for i=1, #buttons do
 		local button = buttons[i];
 		local displayIndex = i + offset;
@@ -550,7 +565,7 @@ function APII:UpdateSystemList()
 		button.highlight:Hide();
 		button:SetEnabled(false);
 		button.background:SetVertexColor(.6, .6, .6);
-		
+
 		if ( displayIndex <= #list) then
 			button:Show();
 			local info = list[displayIndex];
@@ -572,17 +587,30 @@ function APII:UpdateSystemList()
 					button.Details:Show();
 					button.highlight:Show();
 					local details = "<html><body><p>";
-					
-					details = details .. table.concat(info:GetDetailedOutputLines(), "<br/>", 2)
-					details = details:gsub(DETAILS_NO_PUBLIC, DETAILS_NO_PUBLIC_REPLACE);
+					local outputLines = info:GetDetailedOutputLines();
+					-- We don't care fore the name line
+					tremove(outputLines, 1);
 					-- Redo indentation to work in simplehtml
-					-- We want to remove 1 (3 spaces) because each line has a default of 1 indentation
-					details = details:gsub("(    +)", function (a)
-						local spaces = a:len();
-						spaces = spaces - 3;
-						return SIMPLEHTML_SPACE:rep(spaces);
-					end);
+					for k, line in ipairs(outputLines) do
+						line = line:gsub("(   )([ ]*)", function (a, b)
+							return SIMPLEHTML_SPACE:rep(b:len());
+						end);
+						outputLines[k] = line;
+					end
 					
+					-- Re-color documentation info
+					if (info.Documentation) then
+						for i, documentation in ipairs(info.Documentation) do
+							if (documentation == DETAILS_NO_PUBLIC) then
+								documentation = DETAILS_NO_PUBLIC_REPLACE;
+							else
+								documentation = "|cFFffdd55".. documentation .."|r";
+							end
+							outputLines[1+i] = documentation;
+						end
+					end
+
+					details = details .. table.concat(outputLines, "<br/>")
 					details = details .. "</p></body></html>"
 					
 					button.Details:SetHyperlinksEnabled(true);
@@ -591,6 +619,8 @@ function APII:UpdateSystemList()
 					
 					button:SetHeight(heightStuff);
 					HybridScrollFrame_ExpandButton(APIIListsSystemList, ((displayIndex-1) * LISTITEM_HEIGHT), heightStuff);
+					
+					APIILists.selectedButton = button;
 				end
 			end
 		else
@@ -652,6 +682,8 @@ function APII:OnEnable()
 	end
 
 	HybridScrollFrame_CreateButtons(APIIListsSystemList, "APII_ListSystemTemplate", 1, 0);
+	-- Change valueStep to allow for more accurate scroll when jumping to api
+	APIIListsSystemListScrollBar:SetValueStep(1);
 	HybridScrollFrame_Update(APIIListsSystemList, #APIDocumentation.systems * LISTITEM_HEIGHT, APIIListsSystemList:GetHeight());
 	APIIListsSystemListScrollBar.doNotHide = true;
 	APIIListsSystemListScrollBar:Show();
