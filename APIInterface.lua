@@ -301,8 +301,8 @@ function APII_LISTSMIXIN:OpenSystem(api)
 	else
 		APIIListsSystemList.Opened = api;
 		APIIListsSystemList.InSystem = api.System;
+		-- If api is not part of a system, search for it instead
 		if (not api.System) then
-			print("Setting search to", api.Name);
 			APIILists.searchBox:SetText(api.Name);
 		end
 	end
@@ -535,18 +535,22 @@ function APII:UpdateFilterBar()
 	APIILists.filterBar.clearButton:SetShown(APIIListsSystemList.InSystem)
 end
 
-function APII:UpdateSystemList()
+function APII:UpdateSystemList(skipSearchUpdate)
 	local scrollFrame = APIIListsSystemList;
 	local offset = HybridScrollFrame_GetOffset(scrollFrame);
 	local buttons = scrollFrame.buttons;
 	if buttons == nil then return; end
-	APII:UpdateSearchResults();
+	if (not skipSearchUpdate) then
+		APII:UpdateSearchResults();
+	end
 	local list = (APIIListsSystemList.SearchString == "" and #APIIListsSystemList.SearchResults == 0) and APIDocumentation.systems or APIIListsSystemList.SearchResults;
 	APII.currentList = list;
 	local heightStuff = LISTITEM_HEIGHT;
-	
-	HybridScrollFrame_CollapseButton(APIIListsSystemList);
 	APIILists.selectedButton = nil;
+	
+	if (not scrollFrame.Opened) then
+		HybridScrollFrame_CollapseButton(APIIListsSystemList);
+	end
 	
 	for i=1, #buttons do
 		local button = buttons[i];
@@ -689,7 +693,7 @@ function APII:OnEnable()
 	APIIListsSystemListScrollBar:Show();
 	
 	APIIListsSystemList.update = function() 
-				APII:UpdateSystemList();
+				APII:UpdateSystemList(true);
 		end;
 	APIIListsSystemList.SearchString = "";
 	APIIListsSystemList.SearchResults = {};
