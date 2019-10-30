@@ -361,11 +361,14 @@ function APII_COREMIXIN:Search_OnTextChanged(searchBox, userInput)
 		searchBox:SetTextColor(1, 1, 1, 1);
 	end
 
+	if (searchString == "" and not APIIListsSystemList.InSystem) then
+		APIIListsSystemList.Opened = nil;
+	end
+	
 	if (userInput) then
 		APIILists:AddHistory();
 		APIIListsSystemListScrollBar:SetValue(0);
 		APII:UpdateSearchResults();
-		
 	end
 	APII:AdjustSelection();
 	
