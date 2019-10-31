@@ -146,7 +146,7 @@
 		</Layers>
 	</Frame>
 	
-	<Button name="APII_ListSystemTemplate" hidden="false" inherits="SecureFrameTemplate" virtual="true">
+	<Button name="APII_ListSystemTemplate" hidden="false" inherits="SecureFrameTemplate" mixin="APII_LISTBUTTONMIXIN" virtual="true">
 		<Size y="34"/>
 		<Anchors>
 			<Anchor point="LEFT"/>
@@ -336,7 +336,7 @@
 		</Frames>
 
 		<Scripts>
-			<OnClick function="APII_List_OnClick"/>
+			<OnClick method="OnClick"/>
 			<OnLoad>
 				self:RegisterForClicks("LeftButtonUp", "RightButtonUp");
 				self:SetBackdropBorderColor(0.7, 0.5, 0.125, 1);
@@ -651,7 +651,7 @@
 				</Frames>
 			</Frame>
 			
-			<ScrollFrame name="$parentSystemList" parentKey="scrollFrame" inherits="HybridScrollFrameTemplate">
+			<ScrollFrame name="$parentSystemList" parentKey="ScrollFrame" inherits="HybridScrollFrameTemplate">
 				<Anchors>
 					<Anchor point="TOPLEFT" relativeKey="$parent.filterBar" relativePoint="BOTTOMLEFT" x="0" y="-2"/>
 					<Anchor point="BOTTOMRIGHT" relativeTo="$parentInsetLeft" x="-2" y="5"/>
