@@ -146,17 +146,12 @@
 		</Layers>
 	</Frame>
 	
-	<Button name="APII_ListSystemTemplate" hidden="false" inherits="SecureFrameTemplate" mixin="APII_LISTBUTTONMIXIN" virtual="true">
+	<Button name="APII_ListSystemTemplate" hidden="false" mixin="APII_LISTBUTTONMIXIN" virtual="true">
 		<Size y="34"/>
 		<Anchors>
 			<Anchor point="LEFT"/>
 			<Anchor point="RIGHT"/>
 		</Anchors>
-		<Backdrop edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
-			<EdgeSize>
-				<AbsValue val="16"/>
-			</EdgeSize>
-		</Backdrop>		
 		<Layers>
 			<Layer level="BACKGROUND">
 				<Texture name="$parentBackground" file="Interface\Garrison\GarrisonMissionParchment" vertTile="true" horizTile="true" parentKey="background">
@@ -164,7 +159,7 @@
 						<Anchor point="TOPLEFT" x="3" y="-3"/>
 						<Anchor point="BOTTOMRIGHT" x="-3" y="3"/>
 					</Anchors>
-					<Color r="0.7" g="0.7" b="0.7" a="1" />
+					<!--<Color r="0.7" g="0.7" b="0.7" a="1" />-->
 				</Texture>	
 			</Layer>
 			<Layer level="BACKGROUND" textureSubLevel="1">
@@ -338,7 +333,14 @@
 		<Scripts>
 			<OnClick method="OnClick"/>
 			<OnLoad>
+				self.backdropInfo = {
+						edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+						edgeSize = 16,
+						tileEdge = true,
+					};
+				self:OnBackdropLoaded();
 				self:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+				<!-- I can keyvalue the color, but I'd rather not create a global variable -->
 				self:SetBackdropBorderColor(0.7, 0.5, 0.125, 1);
 			</OnLoad>
 			<OnEnter>
@@ -349,11 +351,12 @@
 					self.highlight:Hide();
 				end
 			</OnLeave>
+			<OnSizeChanged method="OnBackdropSizeChanged"/>
 		</Scripts>
 	</Button>
 	
 	
-	<Button name="APII_ListFunctionTemplate" hidden="false" inherits="SecureFrameTemplate" virtual="true">
+	<Button name="APII_ListFunctionTemplate" hidden="false" virtual="true">
 		<Size>
 			<AbsDimension  y="40"/>
 		</Size>

@@ -73,7 +73,7 @@ end
 -- Reset()
 -- isexpanded = SetupAPI(info)
 
-APII_LISTBUTTONMIXIN = {};
+APII_LISTBUTTONMIXIN = CreateFromMixins(BackdropTemplateMixin);
 
 function APII_LISTBUTTONMIXIN:OnClick()
 	APIILists.searchBox:ClearFocus();
@@ -141,6 +141,8 @@ function APII_LISTBUTTONMIXIN:SetupAPI(info)
 			
 			local details = "<html><body><p>";
 			local outputLines = info:GetDetailedOutputLines();
+			self.outputLines = outputLines;
+			self.info = info;
 			-- We don't care fore the name line
 			tremove(outputLines, 1);
 			-- Redo indentation to work in simplehtml
@@ -162,7 +164,36 @@ function APII_LISTBUTTONMIXIN:SetupAPI(info)
 					outputLines[1+i] = documentation;
 				end
 			end
+			
+			-- Find arguments index
+			local argStart = -1;
+			local retStart = -1;
+			for k, text in ipairs(outputLines) do
+				if (text == "Arguments") then
+					argStart = k;
+				elseif (text == "Returns") then
+					retStart = k;
+				end
+			end
 
+			-- Add Mixin info
+			if (info.Arguments) then
+				for k, arg in ipairs(info.Arguments) do
+					if (arg.Mixin) then
+						outputLines[argStart + k] = outputLines[argStart + k] .. " (" .. arg.Mixin .. ")";
+					end
+				end
+			end
+			
+			if (info.Returns) then
+				for k, arg in ipairs(info.Returns) do
+					if (arg.Mixin) then
+						outputLines[retStart + k] = outputLines[retStart + k] .. " (" .. arg.Mixin .. ")";
+					end
+				end
+			end
+			
+			
 			details = details .. table.concat(outputLines, "<br/>")
 			details = details .. "</p></body></html>"
 			
