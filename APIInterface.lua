@@ -23,7 +23,7 @@ local TOOLTIP_UNDOCUMENTED_WARNING = "Enabling this will cause increase memory u
 local ERROR_COMBAT = "Can't open %s during combat. The frame will open once you leave combat.";
 local DETAILS_NO_PUBLIC = "This function does nothing in public clients";
 local DETAILS_NO_PUBLIC_REPLACE = "|cffff0000This function does nothing in public clients|r";
-local ARGUMENT_LABEL_FORMAT = "arg (%d+):";
+local ARGUMENT_LABEL_FORMAT = "Arg (%d+):";
 local ARGUMENT_LABEL_FORMAT_NEW = "%d. %s:";
 local SIMPLEHTML_SPACE = "|c00000000 |r";
 
@@ -664,29 +664,72 @@ end
 -- OnInitialize()
 -- OnEnable()
 
+local TooltipInfo = {}
+
+-- Arg 1, etc with names. Reconstructs the tooltip so left-right text has correct distance
 function APII:UpdateEventTraceTooltip()
-	local tooltip = _G["EventTraceTooltip"];
+	-- Prevent endless loop
+	if (EventTraceTooltip.APIIHandling) then
+		EventTraceTooltip.APIIHandling = nil;
+		return;
+	end
+	
+	local owner = EventTraceTooltip:GetOwner();
 	local lineIndex = 1;
 	local line = _G["EventTraceTooltipTextLeft"..lineIndex];
 	local eventName = line:GetText();
 	
+	-- No arguments, don't do anything
 	if (not eventName or not self.eventArgLookup[eventName]) then
+		EventTraceTooltip.APIIHandling = nil;
 		return;
 	end
-
+	
+	EventTraceTooltip.APIIHandling = true;
+	
+	-- Store all text in the table
+	tinsert(TooltipInfo, eventName);
 	local args = self.eventArgLookup[eventName];
-
+	lineIndex = 2;
+	line = _G["EventTraceTooltipTextLeft"..lineIndex];
 	while (line) do
-		local lineText = line:GetText();
-		if (not lineText) then return; end
-		local argIndex = tonumber(lineText:match(ARGUMENT_LABEL_FORMAT));
+		local leftText = line:GetText();
+		if (not leftText) then break; end
+		local argIndex = tonumber(leftText:match(ARGUMENT_LABEL_FORMAT));
+		
 		if (argIndex and args[argIndex]) then 
-			line:SetText(ARGUMENT_LABEL_FORMAT_NEW:format(argIndex, args[argIndex].Name));
+			leftText = ARGUMENT_LABEL_FORMAT_NEW:format(argIndex, args[argIndex].Name);
 		end
+		
+		local right = _G["EventTraceTooltipTextRight"..lineIndex];
+		local rightText = right:GetText();
+		
+		tinsert(TooltipInfo, leftText);
+		tinsert(TooltipInfo, rightText);
 		
 		lineIndex = lineIndex + 1;
 		line = _G["EventTraceTooltipTextLeft"..lineIndex];
 	end
+	
+	-- Hide the tooltip so we can show it again
+	EventTraceTooltip:Hide();
+	-- Fix anchor
+	EventTraceTooltip:SetOwner(owner, "ANCHOR_RIGHT");
+	
+	-- Title and timestamp
+	GameTooltip_AddHighlightLine(EventTraceTooltip, TooltipInfo[1], HIGHLIGHT_FONT_COLOR);	
+	GameTooltip_AddColoredDoubleLine(EventTraceTooltip, TooltipInfo[2], TooltipInfo[3], HIGHLIGHT_FONT_COLOR, HIGHLIGHT_FONT_COLOR);
+	-- args
+	local index = 4;
+	while (index <= #TooltipInfo) do
+		GameTooltip_AddColoredDoubleLine(EventTraceTooltip, TooltipInfo[index], TooltipInfo[index+1], HIGHLIGHT_FONT_COLOR, HIGHLIGHT_FONT_COLOR);
+		index = index + 2;
+	end
+	
+	wipe(TooltipInfo);
+	EventTraceTooltip.APIIHandling = nil;
+	
+	EventTraceTooltip:Show();
 end
 
 function APII:OnInitialize()
@@ -739,8 +782,8 @@ APII.events:RegisterEvent("ADDON_LOADED");
 APII.events:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
 
 function APII.events:ADDON_LOADED(addonName)
-	if (addonName == "Blizzard_DebugTools") then
-		hooksecurefunc("EventTraceFrameEvent_DisplayTooltip", function() APII:UpdateEventTraceTooltip() end);
+	if (addonName == "Blizzard_EventTrace") then
+		EventTraceTooltip:HookScript("OnShow", function() APII:UpdateEventTraceTooltip() end);
 	end
 end
 
