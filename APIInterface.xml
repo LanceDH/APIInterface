@@ -433,7 +433,7 @@
 				</Anchors>
 			</Frame>
 			
-			<Button parentKey="HistoryBackButton" enable="false">
+			<Button parentKey="HistoryBackButton">
 				<Size x="22" y="22"/>
 				<Anchors>
 					<Anchor point="TOPLEFT" relativeKey="$parent.insetLeft"  x="3" y="-6"/>
@@ -460,7 +460,7 @@
 				<DisabledTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Disabled"/>
 				<HighlightTexture file="Interface\Glues\Common\Glue-LeftArrow-Button-Highlight" alphaMode="ADD"/>
 			</Button>
-			<Button parentKey="HistoryForwardButton" enable="false">
+			<Button parentKey="HistoryForwardButton">
 				<Size x="22" y="22"/>
 				<Anchors>
 					<Anchor point="LEFT" relativeKey="$parent.HistoryBackButton" relativePoint="RIGHT" x="-7" y="0"/>

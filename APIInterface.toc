@@ -1,8 +1,9 @@
-﻿## Interface: 90100
+﻿## Interface: 110105
 ## Title: APIInterface
 ## Notes: Interface for api documentation.
 ## Author: LanceDH
-## Version: 9.1.02
+## Version: 11.1.01
+## IconAtlas: Class
 ## SavedVariables: APIIDB
 
 APIInterface.xml
