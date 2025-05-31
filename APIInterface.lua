@@ -5,7 +5,7 @@ APII = LibStub("AceAddon-3.0"):NewAddon(_addonName);
 
 local HISTORY_MAX = 50;
 local LISTITEM_HEIGHT = 34;
-local LISTITEM_EXPAND_MARGIN = 48;
+local LISTITEM_EXPAND_MARGIN = 52;
 local SEARCH_CUTOFF_AMOUNT = 1000;
 local FORMAT_SEARCH_CUTOFF_CHANGED = "Search cutoff changed to %d for this session.";
 local FORMAT_SEARCH_CUTOFF = "Searched stopped after %d results."
@@ -114,7 +114,16 @@ function APII_LISTBUTTONMIXIN:Reset()
 	self.selected = false;
 	self.highlight:Hide();
 	self:SetEnabled(false);
-	self.background:SetVertexColor(.6, .6, .6);
+	self.background:SetVertexColor(.4, .4, .4);
+	self.titleBar:SetVertexColor(.6, .6, .6);
+	self.highlight.tl:SetVertexColor(.6, .6, .6);
+	self.highlight.l:SetVertexColor(.6, .6, .6);
+	self.highlight.bl:SetVertexColor(.6, .6, .6);
+	self.highlight.t:SetVertexColor(.6, .6, .6);
+	self.highlight.b:SetVertexColor(.6, .6, .6);
+	self.highlight.tr:SetVertexColor(.6, .6, .6);
+	self.highlight.r:SetVertexColor(.6, .6, .6);
+	self.highlight.br:SetVertexColor(.6, .6, .6);
 end
 
 function APII_LISTBUTTONMIXIN:SetupAPI(info)
@@ -141,7 +150,7 @@ function APII_LISTBUTTONMIXIN:SetupAPI(info)
 			local outputLines = info:GetDetailedOutputLines();
 			self.outputLines = outputLines;
 			self.info = info;
-			-- We don't care fore the name line
+			-- We don't care for the name line
 			tremove(outputLines, 1);
 			-- Redo indentation to work in simplehtml
 			for k, line in ipairs(outputLines) do
@@ -281,7 +290,7 @@ function APII_LISTSMIXIN:StepHistory(delta)
 		self.historyIndex = self.historyIndex + delta;
 		self.historyIndex = max(1, min(self.historyIndex, #self.history));
 	end
-	
+
 	APIIListsSystemList.InSystem = self.history[self.historyIndex].system;
 	APIIListsSystemList.Opened = self.history[self.historyIndex].api;
 	APIILists.searchBox:SetText(self.history[self.historyIndex].search or "")
@@ -380,7 +389,7 @@ function APII_LISTSMIXIN:UpdateSystemList(skipSearchUpdate)
 	self.currentList = list;
 	local heightStuff = LISTITEM_HEIGHT;
 	scrollFrame.selectedButton = nil;
-	
+
 	if (not scrollFrame.Opened) then
 		HybridScrollFrame_CollapseButton(scrollFrame);
 	end
@@ -537,9 +546,9 @@ end
 APII_COREMIXIN = {};
 
 function APII_COREMIXIN:OnLoad()
+	ButtonFrameTemplate_HidePortrait(self)
 	self:SetClampedToScreen(true);
-	self.TitleText:SetText("APIInterface");
-	self:RegisterForDrag("LeftButton");
+	self:SetTitle("APIInterface");
 	self:SetResizeBounds(250, 200);
 end
 

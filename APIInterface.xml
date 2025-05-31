@@ -154,7 +154,7 @@
 		</Anchors>
 		<Layers>
 			<Layer level="BACKGROUND">
-				<Texture name="$parentBackground" file="Interface\Garrison\GarrisonMissionParchment" vertTile="true" horizTile="true" parentKey="background">
+				<Texture name="$parentBackground" atlas="PhotosensitivityWarning-parchment-background" vertTile="true" horizTile="true" parentKey="background">
 					<Anchors>
 						<Anchor point="TOPLEFT" x="3" y="-3"/>
 						<Anchor point="BOTTOMRIGHT" x="-3" y="3"/>
@@ -162,34 +162,33 @@
 				</Texture>	
 			</Layer>
 			<Layer level="BACKGROUND" textureSubLevel="1">
-				<Texture name="$parentTitleBackground" file="Interface\PETBATTLES\PetBattleHUDAtlas" horizTile="true" parentKey="titleBar">
-					<Size x="0" y="31"/>
+				<Texture name="$parentTitleBackground" atlas="_UI-Frame-Dragonflight-TitleMiddle" horizTile="true" parentKey="titleBar">
+					<Size x="0" y="30"/>
 					<Anchors>
 						<Anchor point="TOPLEFT" x="4" y="-3"/>
 						<Anchor point="TOPRIGHT" x="-4" y="-3"/>
 					</Anchors>
-					<TexCoords left="0" right="1" top="0.123046875" bottom="0.2060546875"/>
 				</Texture>				
 			</Layer>
 
 			<Layer level="ARTWORK">						
 				<FontString name="$parentName" inherits="GameFontWhite" maxLines="1" hidden="false" justifyH="LEFT" justifyV="MIDDLE" parentKey="Name">
 					<Anchors>
-						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" x="20" />
+						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" x="14" />
 						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.titleBar" x="-20" y="2"/>
 					</Anchors>
 				</FontString>
 				
 				<FontString inherits="GameFontWhite" maxLines="1" hidden="true" justifyH="LEFT" justifyV="MIDDLE" parentKey="ClipboardInfo" text="Clipboard:">
 					<Anchors>
-						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" relativePoint="BOTTOMLEFT" x="26" y="-8"/>
+						<Anchor point="TOPLEFT" relativeKey="$parent.titleBar" relativePoint="BOTTOMLEFT" x="26" y="-14"/>
 					</Anchors>
 				</FontString>
 				
 				<FontString inherits="GameFontWhite" hidden="true" justifyH="LEFT" justifyV="MIDDLE" parentKey="Details" spacing="3">
 					<Anchors>
-						<Anchor point="BOTTOMLEFT" x="30" y="13"/>
-						<Anchor point="BOTTOMRIGHT" x="-20" y="13"/>
+						<Anchor point="BOTTOMLEFT" x="30" y="18"/>
+						<Anchor point="BOTTOMRIGHT" x="-20" y="18"/>
 					</Anchors>
 				</FontString>
 			</Layer>
@@ -268,56 +267,56 @@
 			<Frame name="$parentHighlight" setAllPoints="true" hidden="true" enableMouse="false" parentKey="highlight">
 				<Layers>
 					<Layer level="OVERLAY">
-						<Texture name="$parentTopLeft" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD">
+						<Texture name="$parentTopLeft" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD" parentKey="tl">
 							<Size x="16" y="16"/>
 							<Anchors>
 								<Anchor point="TOPLEFT" x="-1" y="2"/>
 							</Anchors>
 							<TexCoords left="0.06640625" right="0" top="0.4375" bottom="0.65625"/>
 						</Texture>
-						<Texture name="$parentBottomLeft" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD">
+						<Texture name="$parentBottomLeft" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD" parentKey="bl">
 							<Size x="16" y="16"/>
 							<Anchors>
 								<Anchor point="BOTTOMLEFT" x="-1" y="-2"/>
 							</Anchors>
 							<TexCoords left="0.06640625" right="0" top="0.65625" bottom="0.4375"/>
 						</Texture>		
-						<Texture name="$parentTopRight" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD">
+						<Texture name="$parentTopRight" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD" parentKey="tr">
 							<Size x="16" y="16"/>
 							<Anchors>
 								<Anchor point="TOPRIGHT" x="1" y="2"/>
 							</Anchors>
 							<TexCoords left="0" right="0.06640625" top="0.4375" bottom="0.65625"/>
 						</Texture>
-						<Texture name="$parentBottomRight" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD">
+						<Texture name="$parentBottomRight" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD" parentKey="br">
 							<Size x="16" y="16"/>
 							<Anchors>
 								<Anchor point="BOTTOMRIGHT" x="1" y="-2"/>
 							</Anchors>
 							<TexCoords left="0" right="0.06640625" top="0.65625" bottom="0.4375"/>
 						</Texture>			
-						<Texture name="$parentTop" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD">
+						<Texture name="$parentTop" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD" parentKey="t">
 							<Anchors>
 								<Anchor point="TOPLEFT" relativeTo="$parentTopLeft" relativePoint="TOPRIGHT"/>
 								<Anchor point="BOTTOMRIGHT" relativeTo="$parentTopRight" relativePoint="BOTTOMLEFT"/>
 							</Anchors>
 							<TexCoords left="0" right="0.015" top="0.4375" bottom="0.65625"/>
 						</Texture>
-						<Texture name="$parentBottom" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD">
+						<Texture name="$parentBottom" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD" parentKey="b">
 							<Anchors>
 								<Anchor point="TOPLEFT" relativeTo="$parentBottomLeft" relativePoint="TOPRIGHT"/>
 								<Anchor point="BOTTOMRIGHT" relativeTo="$parentBottomRight" relativePoint="BOTTOMLEFT"/>
 							</Anchors>
 							<TexCoords left="0" right="0.015" top="0.65625" bottom="0.4375"/>
 						</Texture>			
-						<Texture name="$parentLeft" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD">
+						<Texture name="$parentLeft" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD" parentKey="l">
 							<Anchors>
 								<Anchor point="TOPLEFT" relativeTo="$parentTopLeft" relativePoint="BOTTOMLEFT"/>
 								<Anchor point="BOTTOMRIGHT" relativeTo="$parentBottomLeft" relativePoint="TOPRIGHT"/>
 							</Anchors>
 							<TexCoords left="0.06640625" right="0" top="0.65625" bottom="0.6"/>
 						</Texture>
-						<Texture name="$parentRight" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD">
+						<Texture name="$parentRight" file="Interface\PaperDollInfoFrame\UI-Character-ReputationBar-Highlight" alphaMode="ADD" parentKey="r">
 							<Anchors>
 								<Anchor point="TOPLEFT" relativeTo="$parentTopRight" relativePoint="BOTTOMLEFT"/>
 								<Anchor point="BOTTOMRIGHT" relativeTo="$parentBottomRight" relativePoint="TOPRIGHT"/>
@@ -340,7 +339,7 @@
 				self:OnBackdropLoaded();
 				self:RegisterForClicks("LeftButtonUp", "RightButtonUp");
 				<!-- I can keyvalue the color, but I'd rather not create a global variable -->
-				self:SetBackdropBorderColor(0.7, 0.5, 0.125, 1);
+				self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1);
 			</OnLoad>
 			<OnEnter>
 				self.highlight:Show();
@@ -401,11 +400,21 @@
 		</Scripts>
 	</Button>
 	
-	<Frame name="APII_Core" inherits="BasicFrameTemplate" mixin="APII_COREMIXIN" movable="true" resizable="false" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
+	<Frame name="APII_Core" inherits="PortraitFrameTemplate" mixin="APII_COREMIXIN" movable="true" resizable="false" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
 		<Size x="600" y="450"/>
 		<Anchors>
 			<Anchor point="CENTER" x="0" y="0"/>
 		</Anchors>
+		<Frames>
+			<Frame parentKey="TitleBar" inherits="PanelDragBarTemplate">
+				<Size y="32"/>
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+					<Anchor point="TOPRIGHT"/>
+				</Anchors>
+			</Frame>
+		</Frames>
+		
 		<Scripts>
 			<OnLoad method="OnLoad"/>
 			<OnShow>
@@ -427,16 +436,16 @@
 		<Frames>
 			<Frame name="$parentInsetLeft" inherits="InsetFrameTemplate" parentKey="insetLeft">
 				<Anchors>
-					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" y="3" x="4"/>
+					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" y="-24" x="6"/>
 					<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" x="4" y="5"/>
-					<Anchor point="RIGHT" x="-26"/>
+					<Anchor point="RIGHT" x="-22"/>
 				</Anchors>
 			</Frame>
 			
 			<Button parentKey="HistoryBackButton">
 				<Size x="22" y="22"/>
 				<Anchors>
-					<Anchor point="TOPLEFT" relativeKey="$parent.insetLeft"  x="3" y="-6"/>
+					<Anchor point="TOPLEFT" x="8" y="-2"/>
 				</Anchors>
 				<HitRectInsets>
 					<AbsInset left="2" right="3" top="2" bottom="2"/>
@@ -463,7 +472,7 @@
 			<Button parentKey="HistoryForwardButton">
 				<Size x="22" y="22"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeKey="$parent.HistoryBackButton" relativePoint="RIGHT" x="-7" y="0"/>
+					<Anchor point="LEFT" relativeKey="$parent.HistoryBackButton" relativePoint="RIGHT" x="-6" y="0"/>
 				</Anchors>
 				<HitRectInsets>
 					<AbsInset left="3" right="2" top="2" bottom="2"/>
@@ -491,7 +500,7 @@
 			<EditBox parentKey="searchBox" inherits="SearchBoxTemplate" letters="40">
 				<Size x="145" y="20"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeKey="$parent.HistoryForwardButton" relativePoint="RIGHT" x="4" y="1"/>
+					<Anchor point="LEFT" relativeKey="$parent.HistoryForwardButton" relativePoint="RIGHT" x="4" y="0"/>
 				</Anchors>
 				<Scripts>
 					<OnLoad>
@@ -509,7 +518,7 @@
 			<CheckButton parentKey="checkUndocumented" inherits="UICheckButtonTemplate">
 				<Size x="25" y="25"/>
 				<Anchors>
-					<Anchor point="LEFT" relativeKey="$parent.searchBox" relativePoint="RIGHT" x="0" y="-2"/>
+					<Anchor point="LEFT" relativeKey="$parent.searchBox" relativePoint="RIGHT" x="0" y="0"/>
 				</Anchors>
 				<Scripts>
 					<OnLoad>
@@ -594,20 +603,20 @@
 			<Frame parentKey="filterBar">
 				<Size y="0.1"/>
 				<Anchors>
-					<Anchor point="TOP" relativeKey="$parent.searchBox" relativePoint="BOTTOM" y="-2"/>
+					<Anchor point="TOP" relativeKey="$parent.insetLeft" y="-2"/>
 					<Anchor point="LEFT" relativeKey="$parent.insetLeft" x="3" />
-					<Anchor point="RIGHT" relativeKey="$parent.insetLeft"/>
+					<Anchor point="RIGHT" relativeKey="$parent.insetLeft" x="-3"/>
 				</Anchors>
 				<Layers>
 					<Layer level="ARTWORK">
 						<Texture file="Interface\Buttons\UI-Listbox-Highlight2">
 							<Color r="0.6" g="0.75" b="1.0" a="0.5" />
 						</Texture>
-						<FontString parentKey="text" inherits="GameFontHighlightSmall" justifyH="LEFT">
-							<Size y="13"/>
+						<FontString parentKey="text" inherits="GameFontHighlightSmall" justifyH="LEFT" justifyV="MIDDLE">
+							
 							<Anchors>
-								<Anchor point="LEFT" x="25" y="0"/>
-								<Anchor point="RIGHT" x="-25" y="0"/>
+								<Anchor point="TOPLEFT" x="25" y="0"/>
+								<Anchor point="BOTTOMRIGHT" x="-25" y="0"/>
 							</Anchors>
 						</FontString>
 					</Layer>
@@ -655,19 +664,19 @@
 			
 			<ScrollFrame name="$parentSystemList" parentKey="ScrollFrame" inherits="HybridScrollFrameTemplate">
 				<Anchors>
-					<Anchor point="TOPLEFT" relativeKey="$parent.filterBar" relativePoint="BOTTOMLEFT" x="0" y="-2"/>
-					<Anchor point="BOTTOMRIGHT" relativeTo="$parentInsetLeft" x="-2" y="5"/>
+					<Anchor point="TOPLEFT" relativeKey="$parent.filterBar" relativePoint="BOTTOMLEFT" x="0" y="-1"/>
+					<Anchor point="BOTTOMRIGHT" relativeTo="$parentInsetLeft" x="-4" y="3"/>
 				</Anchors>
 				<Frames>
 					<Slider name="$parentScrollBar" inherits="HybridScrollBarTrimTemplate" parentKey="scrollBar">
 						<Anchors>
-							<Anchor point="TOPLEFT" relativePoint="BOTTOMRIGHT" x="4" y="400"/>
-							<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT" x="4" y="7"/>
+							<Anchor point="TOPLEFT" relativePoint="BOTTOMRIGHT" x="4" y="402"/>
+							<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT" x="4" y="9"/>
 						</Anchors>
 						<Scripts>
 							<OnLoad>
 								self.trackBG:Show();
-								self.trackBG:SetVertexColor(0, 0, 0, 0.75);
+								self.trackBG:SetVertexColor(0, 0, 0, 0.5);
 							</OnLoad>
 						</Scripts>
 					</Slider>
