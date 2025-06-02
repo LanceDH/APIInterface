@@ -36,7 +36,10 @@
         "ScrollUtil",
         "CreateTreeDataProvider",
         "AddonList",
-        "ScrollBoxConstants"
+        "ScrollBoxConstants",
+        "EventTraceTooltip",
+        "GameTooltip_AddHighlightLine",
+        "GameTooltip_AddColoredDoubleLine"
     ],
     "Lua.diagnostics.disable": [
         "undefined-field",

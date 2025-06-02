@@ -23,6 +23,8 @@ local TOOLTIP_UNDOCUMENTED_WARNING = "Enabling this will cause increase memory u
 local ERROR_COMBAT = "Can't open %s during combat. The frame will open once you leave combat.";
 local DETAILS_NO_PUBLIC = "This function does nothing in public clients";
 local DETAILS_NO_PUBLIC_REPLACE = "|cffff0000This function does nothing in public clients|r";
+local ARGUMENT_LABEL_FORMAT = "Arg (%d+):";
+local ARGUMENT_LABEL_FORMAT_NEW = "%d. %s:";
 local SIMPLEHTML_SPACE = "|c00000000 |r";
 
 ------------------------------------
@@ -662,8 +664,53 @@ end
 ------------------------------------
 -- APII_COREMIXIN
 ------------------------------------
+-- UpdateEventTraceTooltip()
 -- OnInitialize()
 -- OnEnable()
+
+-- Replace evetrace args index with descriptive text from API
+function APII:UpdateEventTraceTooltip()
+	-- Prevent endless loop
+	if (EventTraceTooltip.APIIHandling) then
+		EventTraceTooltip.APIIHandling = nil;
+		return;
+	end
+	
+	local line = _G["EventTraceTooltipTextLeft1"];
+	local eventName = line:GetText();
+	if (not eventName) then
+		EventTraceTooltip.APIIHandling = nil;
+		return;
+	end
+	
+	-- No arguments, don't do anything
+	local args = self.eventArgLookup[eventName];
+	if (not args) then
+		EventTraceTooltip.APIIHandling = nil;
+		return;
+	end
+	
+	EventTraceTooltip.APIIHandling = true;
+
+	local lineIndex = 2;
+	line = _G["EventTraceTooltipTextLeft"..lineIndex];
+	while (line) do
+		local leftText = line:GetText();
+		if (not leftText) then break; end
+		local argIndex = tonumber(leftText:match(ARGUMENT_LABEL_FORMAT));
+		
+		if (argIndex and args[argIndex]) then 
+			line:SetText(ARGUMENT_LABEL_FORMAT_NEW:format(argIndex, args[argIndex].Name));
+		end
+
+		lineIndex = lineIndex + 1;
+		line = _G["EventTraceTooltipTextLeft"..lineIndex];
+	end
+
+	EventTraceTooltip.APIIHandling = nil;
+	
+	EventTraceTooltip:Show();
+end
 
 function APII:OnInitialize()
 	APII_Core:SetScript("OnDragStart", function(self)
@@ -711,7 +758,14 @@ end
 APII.events = CreateFrame("FRAME", "APII_EventFrame"); 
 APII.events:RegisterEvent("PLAYER_REGEN_DISABLED");
 APII.events:RegisterEvent("PLAYER_REGEN_ENABLED");
+APII.events:RegisterEvent("ADDON_LOADED");
 APII.events:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
+
+function APII.events:ADDON_LOADED(addonName)
+	if (addonName == "Blizzard_EventTrace") then
+		EventTraceTooltip:HookScript("OnShow", function() APII:UpdateEventTraceTooltip() end);
+	end
+end
 
 function APII.events:PLAYER_REGEN_DISABLED(loaded_addon)
 	HideUIPanel(APII_Core);
