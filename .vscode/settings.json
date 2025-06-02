@@ -31,7 +31,12 @@
         "APIIListsSystemList",
         "APIILists",
         "APIIListsSystemListScrollBar",
-        "APII_Core"
+        "APII_Core",
+        "CreateScrollBoxListTreeListView",
+        "ScrollUtil",
+        "CreateTreeDataProvider",
+        "AddonList",
+        "ScrollBoxConstants"
     ],
     "Lua.diagnostics.disable": [
         "undefined-field",

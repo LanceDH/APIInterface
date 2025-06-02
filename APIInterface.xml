@@ -246,23 +246,25 @@
 					</OnTextChanged>
 				</Scripts>
 			</EditBox>
-			
+
 			<SimpleHTML parentKey="Details">
-					<size x="450" y="500"/>
-					<Anchors>
-						<Anchor point="TOP" relativeKey="$parent.ClipboardString" relativePoint="BOTTOM"  y="-10"/>
-						<Anchor point="LEFT" x="30"/>
-						<Anchor point="RIGHT" x="30"/>
-					</Anchors>
-					<FontString inherits="GameFontWhite" hidden="true" justifyH="LEFT" justifyV="MIDDLE"  spacing="3" nonspacewrap="true" />
-					
-					<Scripts>
-						<OnHyperlinkClick>
-							APII_Core:HandleHyperlink(self, link, text, button);
-						</OnHyperlinkClick>
-					</Scripts>
-					
-				</SimpleHTML>
+				<size x="450" y="500" />
+				<Anchors>
+					<Anchor point="TOP" relativeKey="$parent.ClipboardString" relativePoint="BOTTOM"
+						y="-10" />
+					<Anchor point="LEFT" x="30" />
+					<Anchor point="RIGHT" x="30" />
+				</Anchors>
+				<FontString inherits="GameFontWhite" hidden="true" justifyH="LEFT" justifyV="MIDDLE"
+					spacing="3" nonspacewrap="true" />
+
+				<Scripts>
+					<OnHyperlinkClick>
+						APII_Core:HandleHyperlink(self, link, text, button);
+					</OnHyperlinkClick>
+				</Scripts>
+
+			</SimpleHTML>
 			
 			<Frame name="$parentHighlight" setAllPoints="true" hidden="true" enableMouse="false" parentKey="highlight">
 				<Layers>
@@ -338,7 +340,6 @@
 					};
 				self:OnBackdropLoaded();
 				self:RegisterForClicks("LeftButtonUp", "RightButtonUp");
-				<!-- I can keyvalue the color, but I'd rather not create a global variable -->
 				self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1);
 			</OnLoad>
 			<OnEnter>
@@ -682,12 +683,9 @@
 					</Slider>
 				</Frames>
 			</ScrollFrame>
-			
 		</Frames>
 		<Scripts>
 			<OnLoad method="OnLoad"/>
 		</Scripts>
 	</Frame>
-
-	
  </Ui>

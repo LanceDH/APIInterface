@@ -14,10 +14,10 @@ local FORMAT_RESULTS_TITLE = "%d %ss containing \"%s\"";
 local FORMAT_IN_SYSTEMS = "In system: %s";
 local FORMAT_UNDOCUMENTED = "(|cffff3333%d undocumented|r)";
 local FORMAT_UNDOCUMENTED_TITLE = "function |cffff3333%s|r (Undocumented)";
-local TOOLTIP_GLOBAL_FORMAT = "Search for global variables for %ss containing the given search string.";
-local TOOLTIP_GLOBAL_FRAME = "Searching for functions can cause errors trying to access forbidden variables.";
-local TOOLTIP_GLOBAL_STRING1 = "Hold shift to search in both variable name and value.";
-local TOOLTIP_GLOBAL_STRING2 = "Hold control to search only in variable value.";
+local TOOLTIP_GLOBAL_FORMAT = "Search global %ss whose name match the given search string.";
+local TOOLTIP_GLOBAL_FRAME = "Can cause errors trying to access variables considered forbidden.";
+local TOOLTIP_GLOBAL_STRING1 = "Hold shift: search in both name and value.";
+local TOOLTIP_GLOBAL_STRING2 = "Hold control: search only in value.";
 local TOOLTIP_UNDOCUMENTED = "Include undocumented system functions in systems and search.";
 local TOOLTIP_UNDOCUMENTED_WARNING = "Enabling this will cause increase memory usage.";
 local ERROR_COMBAT = "Can't open %s during combat. The frame will open once you leave combat.";
@@ -114,8 +114,8 @@ function APII_LISTBUTTONMIXIN:Reset()
 	self.selected = false;
 	self.highlight:Hide();
 	self:SetEnabled(false);
-	self.background:SetVertexColor(.4, .4, .4);
-	self.titleBar:SetVertexColor(.6, .6, .6);
+	self.background:SetVertexColor(.5, .5, .5);
+	self.titleBar:SetVertexColor(.9, .9, .9);
 	self.highlight.tl:SetVertexColor(.6, .6, .6);
 	self.highlight.l:SetVertexColor(.6, .6, .6);
 	self.highlight.bl:SetVertexColor(.6, .6, .6);
@@ -129,8 +129,7 @@ end
 function APII_LISTBUTTONMIXIN:SetupAPI(info)
 	self:Show();
 	self.Api = info;
-	self.Key = displayIndex;
-	self.index = displayIndex;
+
 	self:SetEnabled(not info.undocumented);
 	if(info.undocumented) then
 		self.Name:SetText(FORMAT_UNDOCUMENTED_TITLE:format(info.Name));
@@ -321,8 +320,6 @@ function APII_LISTSMIXIN:OpenSystem(api)
 end
 
 function APII_LISTSMIXIN:FindSelection()
-	local scrollHeight = APIIListsSystemList:GetHeight();
-	local newHeight = 0;
 	local info;
 	
 	-- Searching backwards as we are most likely looking for a table, which are at the back = less looping
@@ -459,13 +456,11 @@ function APII_LISTSMIXIN:GetUndocumentedFunctions(system)
 end
 
 function APII_LISTSMIXIN:UpdateSearchResults()
-	if (not APIIListsSystemList.undocumented) then
-		APIIListsSystemList.undocumented = {}
-	end
-	
+	local searchString = APIIListsSystemList.SearchString;
+	local searchStringIsEmpty = #searchString == 0;
 	local results = APIIListsSystemList.SearchResults;
+	local undocumented = APIIListsSystemList.undocumented;
 	local matches;
-	local undocumented = APIIListsSystemList.undocumented ;
 	
 	wipe(results);
 	wipe(undocumented);
@@ -474,13 +469,13 @@ function APII_LISTSMIXIN:UpdateSearchResults()
 	if APIIListsSystemList.InSystem then
 		local namespace = APIIListsSystemList.InSystem.Namespace;
 		undocumented = self:GetUndocumentedFunctions(APIIListsSystemList.InSystem);
-		if (APIIListsSystemList.SearchString == "") then
+		if (searchStringIsEmpty) then
 			matches = APIIListsSystemList.InSystem:ListAllAPI();
 		else
-			matches = APIIListsSystemList.InSystem:FindAllAPIMatches(APIIListsSystemList.SearchString);
+			matches = APIIListsSystemList.InSystem:FindAllAPIMatches(searchString);
 		end
 	else
-		if (APIIListsSystemList.SearchString == "") then return; end
+		if (searchStringIsEmpty) then return; end
 		matches = APIDocumentation:FindAllAPIMatches(APIIListsSystemList.SearchString);
 		
 		if (self.includeUndocumented) then
@@ -488,7 +483,7 @@ function APII_LISTSMIXIN:UpdateSearchResults()
 				local result = self:GetUndocumentedFunctions(system);
 				if (result) then
 					for k, info in pairs(result) do
-						if (APIIListsSystemList.SearchString == "" or info.Name:lower():find(APIIListsSystemList.SearchString)) then
+						if (searchStringIsEmpty or info.Name:lower():find(searchString)) then
 							tinsert(undocumented, info);
 						end
 					end
@@ -521,13 +516,13 @@ function APII_LISTSMIXIN:UpdateSearchResults()
 		APIIListsSystemList.numUndocumented = #undocumented;
 		if (self.includeUndocumented) then
 			for k, info in ipairs(undocumented) do
-				if (APIIListsSystemList.SearchString == "" or info.Name:lower():find(APIIListsSystemList.SearchString)) then
+				if (searchStringIsEmpty or info.Name:lower():find(searchString)) then
 					table.insert(results, info);
 				end
 			end
 		end
 	end
-	
+
 	APIILists:UpdateFilterBar();
 end
 
@@ -573,7 +568,7 @@ function APII_COREMIXIN:Search_OnTextChanged(searchBox, userInput)
 	-- Make 'Search' text disappear when needed
 	SearchBoxTemplate_OnTextChanged(searchBox);
 	-- protect against malformed pattern
-	if not pcall(function() APIDocumentation:FindAllAPIMatches(searchString) end) then 
+	if (not pcall(function() searchString:match(searchString) end)) then 
 		searchBox:SetTextColor(1, 0.25, 0.25, 1);
 		return; 
 	else
@@ -587,15 +582,15 @@ function APII_COREMIXIN:Search_OnTextChanged(searchBox, userInput)
 	if (userInput) then
 		APIILists:AddHistory();
 		APIIListsSystemListScrollBar:SetValue(0);
-		APIILists:UpdateSearchResults();
 	end
 	APIILists:AdjustSelection();
 	
-	APIILists.buttonFunctions:SetEnabled(searchString ~= "");
-	APIILists.buttonTables:SetEnabled(searchString ~= "");
-	APIILists.buttonFrames:SetEnabled(searchString ~= "");
-	APIILists.buttonStrings:SetEnabled(searchString ~= "");
-	APIILists.ButtonValues:SetEnabled(searchString ~= "");
+	local enableSearchBoxes = #searchString > 0;
+	APIILists.buttonFunctions:SetEnabled(enableSearchBoxes);
+	APIILists.buttonTables:SetEnabled(enableSearchBoxes);
+	APIILists.buttonFrames:SetEnabled(enableSearchBoxes);
+	APIILists.buttonStrings:SetEnabled(enableSearchBoxes);
+	APIILists.ButtonValues:SetEnabled(enableSearchBoxes);
 end
 
 function APII_COREMIXIN:GlobalSearch_OnClick(objType, wantFrames)
