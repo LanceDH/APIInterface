@@ -3,7 +3,7 @@
 ## Notes: Interface for api documentation.
 ## IconAtlas: Class
 ## Author: LanceDH
-## Version: 11.2.01
+## Version: 11.2.02
 ## SavedVariables: APIIDB
 
 APIInterface.xml
