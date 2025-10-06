@@ -7,6 +7,7 @@ local HISTORY_MAX = 50;
 local LISTITEM_HEIGHT = 34;
 local LISTITEM_EXPAND_MARGIN = 52;
 local SEARCH_CUTOFF_AMOUNT = 1000;
+local TEXT_IMPUT_SEARCH_DELAY = 0.3;
 local FORMAT_SEARCH_CUTOFF_CHANGED = "Search cutoff changed to %d for this session.";
 local FORMAT_SEARCH_CUTOFF = "Searched stopped after %d results."
 local FORMAT_NO_RESULTS = "No global variables found containing \"%s\"."
@@ -564,11 +565,30 @@ function APII_COREMIXIN:HandleHyperlink(self, link, text, button)
 	end
 end
 
+function APII_COREMIXIN:OnUpdate()
+	if (self.textInputTimer > 0) then
+		local diff = GetTimePreciseSec() - self.textInputTimer;
+		if (diff > TEXT_IMPUT_SEARCH_DELAY and not APIILists.searchBox.holdingDownKey) then
+			self.textInputTimer = 0;
+			self:SearchTrigger(APIILists.searchBox, true);
+		end
+	end
+end
+
 function APII_COREMIXIN:Search_OnTextChanged(searchBox, userInput)
-	local searchString = searchBox:GetText();
-	APIIListsSystemList.SearchString = searchString;
 	-- Make 'Search' text disappear when needed
 	SearchBoxTemplate_OnTextChanged(searchBox);
+	if(userInput) then
+		self.textInputTimer = GetTimePreciseSec();
+	else
+		self.textInputTimer = 0;
+		self:SearchTrigger(searchBox, userInput);
+	end
+end
+
+function APII_COREMIXIN:SearchTrigger(searchBox, userInput)
+	local searchString = searchBox:GetText();
+	APIIListsSystemList.SearchString = searchString;
 	-- protect against malformed pattern
 	if (not pcall(function() searchString:match(searchString) end)) then 
 		searchBox:SetTextColor(1, 0.25, 0.25, 1);

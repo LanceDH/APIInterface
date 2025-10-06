@@ -418,6 +418,7 @@
 		
 		<Scripts>
 			<OnLoad method="OnLoad"/>
+			<OnUpdate method="OnUpdate"/>
 			<OnShow>
 				PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);
 			</OnShow>
@@ -514,6 +515,12 @@
 					<OnTextChanged>
 						APII_Core:Search_OnTextChanged(self, userInput);
 					</OnTextChanged>
+					<OnKeyDown>
+						self.holdingDownKey = true;
+					</OnKeyDown>
+					<OnKeyUp>
+						self.holdingDownKey = false;
+					</OnKeyUp>
 				</Scripts>
 			</EditBox>
 			<CheckButton parentKey="checkUndocumented" inherits="UICheckButtonTemplate">
