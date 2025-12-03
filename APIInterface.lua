@@ -550,6 +550,28 @@ function APII_COREMIXIN:OnLoad()
 	self:SetResizeBounds(250, 200);
 end
 
+function APII_COREMIXIN:OnShow()
+	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);
+	
+	if (not self.initialized) then
+		self.initialized = true;
+		if (not APIDocumentation) then
+			C_AddOns.LoadAddOn("Blizzard_APIDocumentationGenerated");
+		end
+
+		HybridScrollFrame_CreateButtons(APIIListsSystemList, "APII_ListSystemTemplate", 1, 0);
+		-- Change valueStep to allow for more accurate scroll when jumping to api
+		APIIListsSystemListScrollBar:SetValueStep(1);
+		HybridScrollFrame_Update(APIIListsSystemList, #APIDocumentation.systems * LISTITEM_HEIGHT, APIIListsSystemList:GetHeight());
+		APIIListsSystemListScrollBar.doNotHide = true;
+		APIIListsSystemListScrollBar:Show();
+
+		for k, v in ipairs(APIDocumentation.events) do
+			APII.eventArgLookup[v.LiteralName] = v.Payload
+		end
+	end
+end
+
 function APII_COREMIXIN:HandleHyperlink(self, link, text, button)
 	local apiType, name, system = link:match("api:(%a+):(%a+):(%a*):?") ;
 	local apiInfo = APIDocumentation:FindAPIByName(apiType, name, system);
@@ -744,17 +766,6 @@ function APII:OnInitialize()
 end
 
 function APII:OnEnable()
-	if (not APIDocumentation) then
-		C_AddOns.LoadAddOn("Blizzard_APIDocumentationGenerated");
-	end
-
-	HybridScrollFrame_CreateButtons(APIIListsSystemList, "APII_ListSystemTemplate", 1, 0);
-	-- Change valueStep to allow for more accurate scroll when jumping to api
-	APIIListsSystemListScrollBar:SetValueStep(1);
-	HybridScrollFrame_Update(APIIListsSystemList, #APIDocumentation.systems * LISTITEM_HEIGHT, APIIListsSystemList:GetHeight());
-	APIIListsSystemListScrollBar.doNotHide = true;
-	APIIListsSystemListScrollBar:Show();
-	
 	APIIListsSystemList.update = function() 
 				APIILists:UpdateSystemList(true);
 		end;
@@ -765,10 +776,6 @@ function APII:OnEnable()
 	APIILists:UpdateSystemList();
 	
 	self.eventArgLookup = {};
-	
-	for k, v in ipairs(APIDocumentation.events) do
-		self.eventArgLookup[v.LiteralName] = v.Payload
-	end
 end
 
 ----------

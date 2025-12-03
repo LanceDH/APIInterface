@@ -419,9 +419,7 @@
 		<Scripts>
 			<OnLoad method="OnLoad"/>
 			<OnUpdate method="OnUpdate"/>
-			<OnShow>
-				PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);
-			</OnShow>
+			<OnShow method="OnShow"/>
 			<OnHide>
 				PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE);
 			</OnHide>
