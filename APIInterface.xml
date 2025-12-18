@@ -401,7 +401,629 @@
 		</Scripts>
 	</Button>
 	
-	<Frame name="APII_Core" inherits="PortraitFrameTemplate" mixin="APII_COREMIXIN" movable="true" resizable="false" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
+
+
+
+
+
+
+
+	<Button name="APII_SystemButtonTemplate" mixin="APII_SystemButtonMixin" virtual="true">
+		<Size y="40"/>
+		<Anchors>
+			<Anchor point="LEFT"/>
+			<Anchor point="RIGHT"/>
+		</Anchors>
+		<Layers>
+			<!-- <Layer level="BACKGROUND">
+				<Texture alpha="0.5">
+					<Anchors>
+						<Anchor point="TOPLEFT"/>
+						<Anchor point="BOTTOMRIGHT" y="1"/>
+					</Anchors>
+					<Color r="0.1" g="0.1" b="0.1" />
+				</Texture>
+			</Layer> -->
+			<Layer level="ARTWORK">
+				<FontString parentKey="Name" inherits="GameFontNormal" maxLines="1" justifyH="LEFT" justifyV="TOP" text="PlayerChoice">
+					<!-- <Size y="12"/> -->
+					<Anchors>
+						<Anchor point="TOPLEFT" x="10" y="-6"/>
+						<Anchor point="RIGHT" x="-10"/>
+					</Anchors>
+				</FontString>
+				<FontString parentKey="Namespace" inherits="GameFontNormalSmall" maxLines="1" justifyH="LEFT" justifyV="TOP" text="C_PlayerChoice">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeKey="$parent.Name" relativePoint="BOTTOMLEFT" x="6" y="-4"/>
+						<Anchor point="RIGHT" x="-4"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<NormalTexture atlas="PetList-ButtonBackground"/>
+		<HighlightTexture atlas="PetList-ButtonHighlight"/>
+
+		<Scripts>
+			<OnClick method="OnClick"/>
+		</Scripts>
+	</Button>
+
+	<Frame name="APII_TextAreaTemplate" mixin="APII_TextAreaMixin" virtual="true">
+		<Frames>
+			<SimpleHTML parentKey="Html" resizeToFitContents="true" hidden="true">
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+				</Anchors>
+				<FontString inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4">
+					<!-- <Color r="0.95" g="0.95" b="0.95"/> -->
+				</FontString>
+
+				<Scripts>
+					<OnHyperlinkClick>
+						self:GetParent():GetParent():OnHyperlinkClick(link, text, button);
+					</OnHyperlinkClick>
+				</Scripts>
+			</SimpleHTML>
+
+			<EditBox parentKey="EditBox" autoFocus="false" multiLine="true" enableKeyboard="false" hidden="false">
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+				</Anchors>
+				<HitRectInsets>
+						<AbsInset left="-20" right="-20" top="-2" bottom="-2"/>
+				</HitRectInsets>
+				<FontString parentKey="FontString" inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4">
+					<!-- <Color r="0.95" g="0.95" b="0.95"/> -->
+				</FontString>
+
+				<Scripts>
+					<OnLoad>
+						self:SetText("This is testing text");
+					</OnLoad>
+					<OnEnterPressed>
+						self:ClearFocus();
+					</OnEnterPressed>
+					<OnEditFocusLost>
+						print("Lost", self);
+						self:ClearHighlightText();
+					</OnEditFocusLost>
+					<!-- <OnTextChanged>
+						if (userInput) then
+							self:SetText(self.originalText);
+							self:ClearFocus();
+						end
+					</OnTextChanged> -->
+				</Scripts>
+			</EditBox>
+		</Frames>
+
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString parentKey="Text" inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4" hidden="true" nonspacewrap="true">
+					<Anchors>
+						<Anchor point="TOPLEFT"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+	</Frame>
+
+	<Frame name="APII_TextBlockTemplate" mixin="APII_TextBlockMixin" virtual="true">
+		<Frames>
+			<Frame parentKey="TextArea" inherits="APII_TextAreaTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+				</Anchors>
+			</Frame>
+		</Frames>
+
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+
+	<Frame name="APII_TextBlockCopyStringTemplate" mixin="APII_TextBlockCopyStringMixin" virtual="true">
+		<Frames>
+			<Frame parentKey="Background" mixin="NineSlicePanelMixin">
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+				</Anchors>
+				<KeyValues>
+					<KeyValue key="layoutType" value="UniqueCornersLayout" type="string"/>
+					<KeyValue key="layoutTextureKit" value="ui-hud-minimap-button" type="string"/>
+					<!-- <KeyValue key="layoutTextureKit" value="Common-Opacity-Background" type="string"/> -->
+					<!-- <KeyValue key="layoutTextureKit" value="ui-hud-minimap-button" type="string"/> -->
+				</KeyValues>
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativePoint="TOPLEFT" x="-10" />
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						self:OnLoad();
+						self:SetVertexColor(1,1,1,1);
+					</OnLoad>
+				</Scripts>
+			</Frame>
+
+			<Frame parentKey="TextArea" inherits="APII_TextAreaTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+				</Anchors>
+			</Frame>
+		</Frames>
+
+		<!-- <Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Background" setAllPoints="true" alpha="1" >
+					<Anchors>
+						<Anchor point="TOPLEFT"/>
+					</Anchors>
+					<Color r="0.3" g="0.3" b="0.3"/>
+				</Texture>
+			</Layer>
+
+			<Layer level="BACKGROUND" textureSubLevel="1">
+				<Texture parentKey="BackgroundInset" setAllPoints="true" alpha="1">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeKey="$parent.Background" x="1" y="-1"/>
+						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.Background" x="-1" y="1"/>
+					</Anchors>
+					<Color r="0.07" g="0.07" b="0.07"/>
+				</Texture>
+			</Layer>
+		</Layers> -->
+
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+
+	<Frame name="APII_SystemContentTemplate" mixin="APII_SystemContentMixin" virtual="true">
+		<Size y="42" />
+		<Anchors>
+			<Anchor point="LEFT" />
+			<Anchor point="RIGHT" />
+		</Anchors>
+		<KeyValues>
+			<KeyValue key="expand" value="false" type="boolean"/>
+		</KeyValues>
+		<Frames>
+			<Button parentKey="TitleButton">
+				<Size y="30" />
+				<Anchors>
+					<Anchor point="TOP" />
+					<Anchor point="LEFT" />
+					<Anchor point="RIGHT" />
+				</Anchors>
+				<KeyValues>
+					<KeyValue key="layoutIndex" value="1" type="number"/>
+					<KeyValue key="expand" value="true" type="boolean"/>
+				</KeyValues>
+				<Layers>
+					<Layer level="BACKGROUND">
+
+						<!-- <Texture alpha="0.5">
+							<Anchors>
+								<Anchor point="TOPLEFT"/>
+								<Anchor point="BOTTOMRIGHT"/>
+							</Anchors>
+							<Color r="0.2" g="0.0" b="0.0" />
+						</Texture> -->
+
+						<!-- <Texture parentKey="BGLeft" atlas="Options_ListExpand_Left" useAtlasSize="true">
+							<Anchors>
+								<Anchor point="LEFT" x="0" y="0" />
+							</Anchors>
+						</Texture>
+						<Texture parentKey="BGRight" atlas="Options_ListExpand_Right" useAtlasSize="true">
+							<Anchors>
+								<Anchor point="RIGHT" x="-0" y="0" />
+							</Anchors>
+						</Texture> -->
+						<Texture parentKey="BGLeft" atlas="Options_ListExpand_Left" alpha="0.8">
+							<Size x="12"/>
+							<Anchors>
+								<Anchor point="TOPLEFT" x="0" y="0" />
+								<Anchor point="BOTTOMLEFT" x="0" y="0" />
+							</Anchors>
+						</Texture>
+						<Texture parentKey="BGRight" atlas="Options_ListExpand_Right" alpha="0.8">
+							<Size x="32"/>
+							<Anchors>
+								<Anchor point="TOPRIGHT" x="0" y="0" />
+								<Anchor point="BOTTOMRIGHT" x="0" y="0" />
+							</Anchors>
+						</Texture>
+						<Texture parentKey="BGMiddle" atlas="_Options_ListExpand_Middle" horizTile="true"  alpha="0.8">
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeKey="$parent.BGLeft" relativePoint="TOPRIGHT" />
+								<Anchor point="BOTTOMRIGHT" relativeKey="$parent.BGRight" relativePoint="BOTTOMLEFT" />
+							</Anchors>
+						</Texture>
+					</Layer>
+
+					<Layer level="ARTWORK">
+						<FontString parentKey="Label" inherits="GameFontHighlight" maxLines="1" justifyH="LEFT" justifyV="MIDDLE">
+							<Anchors>
+								<Anchor point="LEFT" x="30" y="0" />
+								<Anchor point="RIGHT" relativeKey="$parent.BGRight" x="-40" y="0" />
+							</Anchors>
+						</FontString>
+					</Layer>
+
+					<Layer level="HIGHLIGHT">
+						<Texture parentKey="HighlightLeft" atlas="Section_Expand_glowing_Left" alpha="0.5">
+							<Size x="66"/>
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeKey="$parent.BGLeft" y="-1"/>
+								<Anchor point="BOTTOMLEFT" relativeKey="$parent.BGLeft" y="-1"/>
+							</Anchors>
+						</Texture>
+						<Texture parentKey="HighlightRight" atlas="Section_Expand_glowing_right" alpha="0.5">
+							<Size x="66"/>
+							<Anchors>
+								<Anchor point="TOPRIGHT" relativeKey="$parent.BGRight" y="-1"/>
+								<Anchor point="BOTTOMRIGHT" relativeKey="$parent.BGRight" y="-1"/>
+							</Anchors>
+						</Texture>
+						<Texture parentKey="HighlightMiddle" atlas="Section_Expand_glowing_middle" horizTile="true" alpha="0.5">
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeKey="$parent.HighlightLeft" relativePoint="TOPRIGHT"/>
+								<Anchor point="BOTTOMRIGHT" relativeKey="$parent.HighlightRight" relativePoint="BOTTOMLEFT"/>
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				<scripts>
+					<OnClick>
+						self:GetParent():OnClick();
+					</OnClick>
+				</scripts>
+			</Button>
+
+			<EditBox parentKey="EditBox" autoFocus="false" multiLine="true" hidden="true" enableKeyboard="false">
+				<Anchors>
+					<Anchor point="TOP" relativeKey="$parent.TitleButton" relativePoint="BOTTOM"/>
+					<Anchor point="LEFT" />
+					<Anchor point="RIGHT"/>
+				</Anchors>
+				<FontString parentKey="FontString" inherits="GameFontHighlight" spacing="3"/>
+
+				<Scripts>
+					<OnLoad>
+						self:SetText("This is testing text");
+					</OnLoad>
+					<OnEnterPressed>
+						self:ClearFocus();
+					</OnEnterPressed>
+					<!-- <OnTextChanged>
+						if (userInput) then
+							self:SetText(self.originalText);
+							self:ClearFocus();
+						end
+					</OnTextChanged> -->
+				</Scripts>
+			</EditBox>
+
+			<Frame parentKey="ClipboardString" hidden="true" >
+				<Size y="50" />
+				<KeyValues>
+					<KeyValue key="layoutIndex" value="2" type="number" />
+					<KeyValue key="leftPadding" value="30" type="number" />
+					<KeyValue key="topPadding" value="4" type="number" />
+					<KeyValue key="rightPadding" value="30" type="number" />
+					<KeyValue key="bottomPadding" value="4" type="number" />
+					<KeyValue key="expand" value="true" type="boolean"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="TOP" relativeKey="$parent.TitleButton" relativePoint="BOTTOM"/>
+						<Anchor point="LEFT" x="2"/>
+						<Anchor point="RIGHT" x="2"/>
+					</Anchors>
+				<Layers>
+					<!-- <Layer level="BACKGROUND">
+						<Texture alpha="0.5">
+							<Anchors>
+								<Anchor point="TOPLEFT"/>
+								<Anchor point="BOTTOMRIGHT" />
+							</Anchors>
+							<Color r="0.0" g="0.2" b="0.0" />
+						</Texture>
+					</Layer> -->
+
+					<Layer level="ARTWORK">
+						<FontString parentKey="Text" inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" text="This is a text" spacing="3">
+							<Anchors>
+								<Anchor point="TOP"/>
+								<Anchor point="LEFT" />
+								<Anchor point="RIGHT" />
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+			</Frame>
+
+			<SimpleHTML parentKey="Html" resizeToFitContents="true">
+				<!-- <size x="450" y="500" /> -->
+				<Anchors>
+					<Anchor point="TOP" relativeKey="$parent.TitleButton" relativePoint="BOTTOM" />
+					<Anchor point="LEFT" x="0"/>
+					<Anchor point="RIGHT" x="0"/>
+				</Anchors>
+				<FontString inherits="GameFontHighlight" nonspacewrap="false" justifyH="LEFT" justifyV="TOP" spacing="3">
+					<Anchors>
+						<Anchor point="TOP" />
+						<Anchor point="LEFT" />
+						<Anchor point="RIGHT" />
+					</Anchors>
+				</FontString>
+
+				<Scripts>
+					<OnHyperlinkClick>
+						self:GetParent():OnHyperlinkClick(link, text, button);
+					</OnHyperlinkClick>
+				</Scripts>
+			</SimpleHTML>
+
+
+
+			<Frame parentKey="TestBlock" inherits="APII_TextBlockTemplate" hidden="true">
+				<Anchors>
+					<Anchor point="TOP" relativeKey="$parent.TitleButton" relativePoint="BOTTOM" />
+					<Anchor point="LEFT" x="0"/>
+					<Anchor point="RIGHT" x="0"/>
+				</Anchors>
+			</Frame>
+		</Frames>
+
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture alpha="0.7">
+					<Anchors>
+						<Anchor point="TOPLEFT"/>
+						<Anchor point="BOTTOMRIGHT" y="1"/>
+					</Anchors>
+					<Color r="0.15" g="0.15" b="0.15" />
+				</Texture>
+				
+			</Layer>
+			<Layer level="BACKGROUND" textureSubLevel="1">
+				<Texture alpha="0.6" atlas="Artifacts-HeaderBG">
+					<Size y="24"/>
+					<Anchors>
+						<Anchor point="TOP" relativeKey="$parent.TitleButton" relativePoint="BOTTOM" y="4"/>
+						<Anchor point="LEFT"/>
+						<Anchor point="RIGHT"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+
+			
+			
+		</Layers>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+
+	<Frame name="APII_Frame" inherits="PortraitFrameTemplate" mixin="APII_CoreMixin" movable="true" resizable="true" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
+		<Size x="600" y="450"/>
+		<Anchors>
+			<Anchor point="CENTER" x="0" y="0"/>
+		</Anchors>
+		<Frames>
+			<Frame parentKey="TitleBar" inherits="PanelDragBarTemplate">
+				<Size y="32"/>
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+					<Anchor point="TOPRIGHT"/>
+				</Anchors>
+			</Frame>
+
+			<Frame parentKey="TopBar">
+				<Size y="32"/>
+				<Anchors>
+					<Anchor Point="TOPLEFT" relativeKey="$parent.TitleBar" RelativePoint="BOTTOMLEFT" x="7" y="10"/>
+					<Anchor Point="TOPRIGHT" x="-2"/>
+				</Anchors>
+
+				<!-- <Layers>
+					<Layer level="BACKGROUND">
+						<Texture setAllPoints="true">
+							<Color r="0.5" g="0" b="0"/>
+						</Texture>
+					</Layer>
+				</Layers> -->
+
+				<Frames>
+					<Button parentKey="HistoryBackButton">
+						<Size x="26" y="26"/>
+						<Anchors>
+							<Anchor point="LEFT" x="4"/>
+						</Anchors>
+						<HitRectInsets>
+							<AbsInset left="2" right="3" top="2" bottom="2"/>
+						</HitRectInsets>
+						<Scripts>
+							<OnClick>
+								self:GetParent():StepHistory(1);
+							</OnClick>
+							<OnEnter>
+								GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+								GameTooltip:SetText("Back In History");
+								GameTooltip:AddLine("Hold shift to go to the very end.", 1, 1, 1, true);
+								GameTooltip:Show();
+							</OnEnter>
+							<OnLeave>
+								GameTooltip:Hide();
+							</OnLeave>
+						</Scripts>
+						<NormalTexture file="Interface\Glues\Common\Glue-LeftArrow-Button-Up"/>
+						<PushedTexture file="Interface\Glues\Common\Glue-LeftArrow-Button-Down"/>
+						<DisabledTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Disabled"/>
+						<HighlightTexture file="Interface\Glues\Common\Glue-LeftArrow-Button-Highlight" alphaMode="ADD"/>
+					</Button>
+					<Button parentKey="HistoryForwardButton">
+						<Size x="26" y="26"/>
+						<Anchors>
+							<Anchor point="LEFT" relativeKey="$parent.HistoryBackButton" relativePoint="RIGHT" x="-2" y="0"/>
+						</Anchors>
+						<HitRectInsets>
+							<AbsInset left="3" right="2" top="2" bottom="2"/>
+						</HitRectInsets>
+						<Scripts>
+							<OnClick>
+								self:GetParent():StepHistory(-1);
+							</OnClick>
+							<OnEnter>
+								GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+								GameTooltip:SetText("Forward In History");
+								GameTooltip:AddLine("Hold shift to go to the very front.", 1, 1, 1, true);
+								GameTooltip:Show();
+							</OnEnter>
+							<OnLeave>
+								GameTooltip:Hide();
+							</OnLeave>
+						</Scripts>
+						<NormalTexture file="Interface\Glues\Common\Glue-RightArrow-Button-Up"/>
+						<PushedTexture file="Interface\Glues\Common\Glue-RightArrow-Button-Down"/>
+						<DisabledTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Disabled"/>
+						<HighlightTexture file="Interface\Glues\Common\Glue-RightArrow-Button-Highlight" alphaMode="ADD"/>
+					</Button>
+					
+					<EditBox parentKey="GeneralSearch" inherits="SearchBoxTemplate" mixin="APII_SearchboxMixin">
+						<Size x="300" y="20" />
+						<KeyValues>
+							<KeyValue key="instructionText" value="Search" type="string"/>
+						</KeyValues>
+						<Anchors>
+							<Anchor point="CENTER"/>
+						</Anchors>
+						<Scripts>
+							<OnLoad method="OnLoad"/>
+							<OnTextChanged method="OnTextChanged"/>
+							<OnKeyDown>
+								self.holdingDownKey = true;
+							</OnKeyDown>
+							<OnKeyUp>
+								self.holdingDownKey = false;
+							</OnKeyUp>
+						</Scripts>
+					</EditBox>
+
+				</Frames>
+			</Frame>
+
+			<Frame parentKey="SystemScrollInset" useParentLevel="true" inherits="InsetFrameTemplate">
+				<Size x="200"/>
+				<Anchors> 
+					<Anchor point="TOPLEFT" relativeKey="$parent.TopBar" relativePoint="BOTTOMLEFT"/>
+					<Anchor point="BOTTOM" y="4"/>
+				</Anchors>
+			</Frame>
+
+			<EditBox parentKey="SystemSearch" inherits="SearchBoxTemplate" mixin="APII_SearchboxMixin">
+				<Size y="20" />
+				<KeyValues>
+					<KeyValue key="instructionText" value="Search System" type="string"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.SystemScrollInset" x="9" y="-3" />
+					<Anchor point="RIGHT" relativeKey="$parent.SystemScrollInset" x="-3" />
+				</Anchors>
+				<Scripts>
+					<OnLoad method="OnLoad"/>
+					<OnTextChanged method="OnTextChanged"/>
+					<OnKeyDown>
+						self.holdingDownKey = true;
+					</OnKeyDown>
+					<OnKeyUp>
+						self.holdingDownKey = false;
+					</OnKeyUp>
+				</Scripts>
+			</EditBox>
+
+			<Frame parentKey="SystemScrollBox" inherits="WowScrollBoxList">
+				<Anchors> 
+					<Anchor point="TOPLEFT" relativeKey="$parent.SystemScrollInset" x="4" y="-24"/>
+					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.SystemScrollInset" x="-4" y="3"/>
+				</Anchors>
+				<!-- <Layers>
+					<Layer level="BACKGROUND">
+						<Texture alpha="0.4">
+							<Color r="0" g="0" b="0.2"/>
+						</Texture>
+					</Layer>
+				</Layers> -->
+			</Frame>
+
+			<EventFrame parentKey="SystemScrollBar" inherits="MinimalScrollBar">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.SystemScrollInset" relativePoint="TOPRIGHT" x="5" y="-2"/>
+					<Anchor point="BOTTOM" relativeKey="$parent.SystemScrollInset" relativePoint="BOTTOM" y="2"/>
+				</Anchors>
+			</EventFrame>
+
+			<Button parentKey="ResizeButton" frameLevel="30" inherits="PanelResizeButtonTemplate">
+				<Anchors>
+					<Anchor point="BOTTOMRIGHT" x="-2" y="3"/>
+				</Anchors>
+			</Button>
+
+			<EventFrame parentKey="SystemContentScrollBar" inherits="MinimalScrollBar">
+				<Anchors>
+					<Anchor point="TOP" relativeKey="$parent.SystemScrollBox"/>
+					<Anchor point="RIGHT" relativeKey="$parent.TopBar" x="-6"/>
+					<Anchor point="BOTTOM" relativeKey="$parent.ResizeButton" relativePoint="TOP"/>
+				</Anchors>
+			</EventFrame>
+
+			<Frame parentKey="SystemContentScrollInset" useParentLevel="true" inherits="InsetFrameTemplate">
+				<Anchors> 
+					<Anchor point="TOP" relativeKey="$parent.SystemScrollInset"/>
+					<Anchor point="BOTTOM" relativeKey="$parent.SystemScrollInset"/>
+					<Anchor point="LEFT" relativeKey="$parent.SystemScrollBar" relativePoint="RIGHT" x="5"/>
+					<Anchor point="RIGHT" relativeKey="$parent.SystemContentScrollBar" relativePoint="LEFT" x="-5"/>
+				</Anchors>
+			</Frame>
+
+			<Frame parentKey="SystemContentScrollBox" inherits="WowScrollBoxList">
+				<Anchors> 
+					<Anchor point="TOPLEFT" relativeKey="$parent.SystemContentScrollInset" x="4" y="-4"/>
+					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.SystemContentScrollInset" x="-4" y="3"/>
+				</Anchors>
+
+				<Frames>
+					<Frame parentKey="ContentDummy" inherits="APII_SystemContentTemplate" hidden="true">
+						<Anchors> 
+							<Anchor point="LEFT"/>
+							<Anchor point="RIGHT"/>
+						</Anchors>
+					</Frame>
+				</Frames>
+				<!-- <Layers>
+					<Layer level="BACKGROUND">
+						<Texture alpha="0.5">
+							<Color r="0" g="0" b="0.2"/>
+						</Texture>
+					</Layer>
+				</Layers> -->
+			</Frame>
+		</Frames>
+		
+		<Scripts>
+			<OnSizeChanged method="OnSizeChanged"/>
+			<OnLoad method="OnLoad"/>
+			<OnUpdate method="OnUpdate"/>
+			<OnShow method="OnShow"/>
+			<OnHide>
+				PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE);
+			</OnHide>
+		</Scripts>
+	</Frame>
+
+
+	<Frame name="APII_Core" inherits="PortraitFrameTemplate" mixin="APII_COREMIXIN" movable="true" resizable="true" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
 		<Size x="600" y="450"/>
 		<Anchors>
 			<Anchor point="CENTER" x="0" y="0"/>
@@ -691,6 +1313,7 @@
 		</Frames>
 		<Scripts>
 			<OnLoad method="OnLoad"/>
+			
 		</Scripts>
 	</Frame>
  </Ui>

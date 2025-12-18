@@ -556,7 +556,7 @@ function APII_COREMIXIN:OnShow()
 	if (not self.initialized) then
 		self.initialized = true;
 		if (not APIDocumentation) then
-			C_AddOns.LoadAddOn("Blizzard_APIDocumentationGenerated");
+			--C_AddOns.LoadAddOn("Blizzard_APIDocumentationGenerated");
 		end
 
 		HybridScrollFrame_CreateButtons(APIIListsSystemList, "APII_ListSystemTemplate", 1, 0);
@@ -763,6 +763,9 @@ function APII:OnInitialize()
 					self:StopMovingOrSizing();
 				end
 			);
+
+	APII.openedSystem = nil;
+	APII.openedAPIs = {};
 end
 
 function APII:OnEnable()
@@ -776,34 +779,37 @@ function APII:OnEnable()
 	APIILists:UpdateSystemList();
 	
 	self.eventArgLookup = {};
+
+	ShowUIPanel(APII_Frame);
 end
+
 
 ----------
 -- Events
 ----------
 
-APII.events = CreateFrame("FRAME", "APII_EventFrame"); 
-APII.events:RegisterEvent("PLAYER_REGEN_DISABLED");
-APII.events:RegisterEvent("PLAYER_REGEN_ENABLED");
-APII.events:RegisterEvent("ADDON_LOADED");
-APII.events:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
+-- APII.events = CreateFrame("FRAME", "APII_EventFrame"); 
+-- APII.events:RegisterEvent("PLAYER_REGEN_DISABLED");
+-- APII.events:RegisterEvent("PLAYER_REGEN_ENABLED");
+-- APII.events:RegisterEvent("ADDON_LOADED");
+-- APII.events:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
 
-function APII.events:ADDON_LOADED(addonName)
-	if (addonName == "Blizzard_EventTrace") then
-		EventTraceTooltip:HookScript("OnShow", function() APII:UpdateEventTraceTooltip() end);
-	end
-end
+-- function APII.events:ADDON_LOADED(addonName)
+-- 	if (addonName == "Blizzard_EventTrace") then
+-- 		EventTraceTooltip:HookScript("OnShow", function() APII:UpdateEventTraceTooltip() end);
+-- 	end
+-- end
 
-function APII.events:PLAYER_REGEN_DISABLED(loaded_addon)
-	HideUIPanel(APII_Core);
-end
+-- function APII.events:PLAYER_REGEN_DISABLED(loaded_addon)
+-- 	HideUIPanel(APII_Core);
+-- end
 
-function APII.events:PLAYER_REGEN_ENABLED(loaded_addon)
-	if APII.openDuringCombat then
-		ShowUIPanel(APII_Core);
-		APII.openDuringCombat = false;
-	end
-end
+-- function APII.events:PLAYER_REGEN_ENABLED(loaded_addon)
+-- 	if APII.openDuringCombat then
+-- 		ShowUIPanel(APII_Core);
+-- 		APII.openDuringCombat = false;
+-- 	end
+-- end
 
 ----------
 -- Slash
@@ -820,6 +826,9 @@ local function slashcmd(msg, editbox)
 		SEARCH_CUTOFF_AMOUNT = amount;
 		print(FORMAT_SEARCH_CUTOFF_CHANGED:format(SEARCH_CUTOFF_AMOUNT));
 	else
+
+		ShowUIPanel(APII_Frame);
+
 		if (not InCombatLockdown()) then
 			ShowUIPanel(APII_Core);
 			if (msg ~= "") then
@@ -834,3 +843,949 @@ local function slashcmd(msg, editbox)
 	end
 end
 SlashCmdList["APIISLASH"] = slashcmd
+
+
+
+
+
+local APII_COMMENT_COLOR = LIGHTGRAY_FONT_COLOR;
+local APII_SYSTEM_SOURCE_COLOR = LIGHTGRAY_FONT_COLOR;
+local APII_NO_PUBLIC_COLOR = RED_FONT_COLOR;
+local APII_MIXIN_COLOR = BATTLENET_FONT_COLOR;
+
+
+
+
+APII_SearchboxMixin = CreateFromMixins(CallbackRegistryMixin);
+
+APII_SearchboxMixin:GenerateCallbackEvents(
+	{
+		"OnTextChanged";
+	}
+);
+
+function APII_SearchboxMixin:OnLoad()
+	CallbackRegistryMixin.OnLoad(self);
+	SearchBoxTemplate_OnLoad(self);
+end
+
+function APII_SearchboxMixin:OnTextChanged(userInput)
+	SearchBoxTemplate_OnTextChanged(self);
+	self:TriggerEvent(APII_SearchboxMixin.Event.OnTextChanged, self:GetText(), userInput);
+end
+
+
+
+
+
+
+local function AlterOfficialDocumentation()
+	APII_ValueAPIMixin = CreateFromMixins(BaseAPIMixin);
+
+	function APII_ValueAPIMixin:GetParentName()
+		if self.Table then
+			return self.Table:GetName();
+		end
+		return "";
+	end
+
+	function APII_ValueAPIMixin:GetType()
+		return "value";
+	end
+
+	function APII_ValueAPIMixin:GetLinkHexColor()
+		return "ffdd55";
+	end
+
+	function APII_ValueAPIMixin:MatchesSearchString(searchString)
+		if self:GetLoweredName():match(searchString) then
+			return true;
+		end
+
+		if self:MatchesAnyDocumentation(searchString) then
+			return true;
+		end
+
+		return false;
+	end
+
+	function APII_ValueAPIMixin:GetSingleOutputLine()
+		local valueString = "";
+		if (self.Type == "string" or self.Type == "number" or self.Type == "boolean") then
+			valueString = string.format("%s (%s)", tostring(self.Value), self.Type);
+		else
+			-- This data makes no sense, so just get the value from the constant itself;
+
+			local constant = Constants[self:GetParentName()];
+			if (constant) then
+				local value = constant[self:GetName()];
+				
+				local typeApi = APIDocumentation:FindAPIByName("table", self.Type);
+				print(constant, self:GetName(), typeApi);
+				valueString = string.format("%s (%s)", value, typeApi and typeApi:GenerateAPILink() or self.Type);
+			end
+			
+
+			-- local enum = Enum[self.Type];
+			-- if (enum) then
+			-- 	local enumValue = enum[self.Value];
+			-- 	print(self.Type, self.Value, enumValue)
+			-- end
+			
+		end
+		
+		return string.format("%s %s", self:GenerateAPILink(), valueString);
+	end
+
+
+
+	local function ReplacerMatchFunc(self, searchString)
+		local succes = self:originalMatchesSearchString(searchString);
+		if (succes) then return true; end
+
+		if (self:MatchesAnyAPI(self.Values, searchString)) then
+			return true
+		end
+
+		return false;
+	end
+
+
+
+	if (not APIDocumentation.values) then
+		for k, tableApi in ipairs(APIDocumentation.tables) do
+			if (tableApi.Values) then
+				for i, value in ipairs(tableApi.Values) do
+					value.Table = tableApi;
+
+					Mixin(value, APII_ValueAPIMixin);
+					if (not APIDocumentation.apiiValues) then
+						APIDocumentation.apiiValues = {};
+					end
+					table.insert(APIDocumentation.apiiValues, value);
+				end
+
+				tableApi.originalMatchesSearchString = tableApi.MatchesSearchString;
+				tableApi.MatchesSearchString = ReplacerMatchFunc;
+			end
+		end
+	end
+
+	local noSystemContent = CreateFromMixins(SystemsAPIMixin);
+	noSystemContent.isFake = true;
+	noSystemContent.Name = "Systemless";
+	noSystemContent.Type = "System";
+
+	local tableKeys = {
+		"Functions",
+		"Events",
+		"Tables",
+		"Callbacks",
+	}
+
+	for _, tableKey in ipairs(tableKeys) do
+		local lowerKey = tableKey:lower();
+		local docTable = APIDocumentation[lowerKey];
+		if (docTable) then
+			local systemTable = noSystemContent[tableKey];
+			for _, api in ipairs(docTable) do
+				if (not api.System) then
+					api.System = noSystemContent;
+					if (not systemTable) then
+						systemTable = {};
+						noSystemContent[tableKey] = systemTable;
+					end
+					tinsert(systemTable, api);
+				end
+			end
+			if (systemTable) then
+				table.sort(systemTable, function(a, b)
+					if (a.Type ~= b.Type) then
+						return a.Type < b.Type;
+					end
+					return a.Name < b.Name;
+				end);
+			end
+		end
+	end
+
+
+
+	-- for k, info in ipairs(APIDocumentation.events) do
+	-- 	if (not info.System) then
+	-- 		print(info.Name);
+	-- 		tinsert(noSystemContent.events, info);
+	-- 	end
+	-- end
+
+	-- for k, info in ipairs(APIDocumentation.tables) do
+	-- 	if (not info.System) then
+	-- 		print(info.Name);
+	-- 		tinsert(noSystemContent.tables, info);
+	-- 	end
+	-- end
+
+	-- for k, info in ipairs(APIDocumentation.callbacks) do
+	-- 	if (not info.System) then
+	-- 		print(info.Name);
+	-- 		tinsert(noSystemContent.callbacks, info);
+	-- 	end
+	-- end
+
+	tinsert(APIDocumentation.systems, 1, noSystemContent);
+end
+
+
+
+local activeSize = 1;
+
+local fontTest = {
+	[1] = {
+		["normal"] = "GameFontHighlight";
+		["big"] = "GameFontHighlightMedium";
+	};
+	[2] = {
+		["normal"] = "GameFontHighlightMedium";
+		["big"] = "GameFontHighlightLarge";
+	};
+}
+
+local function GetFont(size)
+	return fontTest[activeSize][size];
+end
+
+
+APII_TextAreaMixin = {};
+
+function APII_TextAreaMixin:GetEditBox()
+	return self.EditBox;
+end
+
+function APII_TextAreaMixin:GetHtml()
+	return self.Html;
+end
+
+function APII_TextAreaMixin:GetFontString()
+	return self.Text;
+end
+
+function APII_TextAreaMixin:SetHyperlinkingEnabled(enable)
+	local html = self:GetHtml();
+	html:SetShown(enable);
+
+	local editBox = self:GetEditBox();
+	editBox:ClearFocus();
+	editBox:ClearHighlightText();
+	editBox:SetShown(not enable);
+end
+
+function APII_TextAreaMixin:SetAvailableWidth(width)
+	local editBox = self:GetEditBox();
+	local html = self:GetHtml();
+	local fonsString = self:GetFontString();
+
+	self:SetWidth(width);
+	editBox:SetWidth(width);
+	html:SetWidth(width);
+	fonsString:SetWidth(width);
+end
+
+function APII_TextAreaMixin:SetText(text, font)
+	local editBox = self:GetEditBox();
+	local html = self:GetHtml();
+	local fonsString = self:GetFontString();
+
+	editBox:SetText(text);
+	editBox:SetFontObject(font);
+	editBox.originalText = text;
+
+	html:SetHyperlinksEnabled(true);
+	html:SetText(text);
+	html:SetFontObject("p", font);
+
+	fonsString:SetFontObject(font);
+	-- Set absurd height to ensure correct string height
+	-- This needs to be *really* absurd because some enums have *a lot* of values like Enum.PlayerInteractionType
+	fonsString:SetHeight(3000);
+	fonsString:SetText(text);
+	local height = self.Text:GetStringHeight();
+	fonsString:SetHeight(height);
+
+	self:SetHeight(height);
+end
+
+
+APII_TextBlockMixin = {};
+
+function APII_TextBlockMixin:OnLoad()
+	-- self.Html:SetIndentedWordWrap("p", true);
+	-- self.EditBox:SetIndentedWordWrap(true);
+	-- self.Text:SetIndentedWordWrap(true);
+end
+
+function APII_TextBlockMixin:OnHyperlinkClick(...)
+	self:GetParent():OnHyperlinkClick(...);
+end
+
+function APII_TextBlockMixin:GetTextArea()
+	return self.TextArea;
+end
+
+function APII_TextBlockMixin:SetHyperlinkingEnabled(enable)
+	self:GetTextArea():SetHyperlinkingEnabled(enable);
+end
+
+function APII_TextBlockMixin:GetPadding()
+	if (not self.blockData) then
+		return 0, 0, 0, 0;
+	end
+	return (self.blockData.leftPadding or 0)
+			,(self.blockData.rightPadding or 0)
+			,(self.blockData.topPadding or 0)
+			,(self.blockData.bottomPadding or 0)
+end
+
+function APII_TextBlockMixin:Initialize(blockData)
+	self.blockData = blockData;
+
+	local basicString = blockData.textString;
+	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
+	local width = self:GetWidth() - leftPadding - rightPadding;
+
+	local textArea = self:GetTextArea();
+	textArea:SetPoint("TOPLEFT", leftPadding, -topPadding);
+	textArea:SetAvailableWidth(width);
+	textArea:SetText(basicString, blockData.font);
+
+	local totalHeight = textArea:GetHeight() + topPadding + bottomPadding;
+	self:SetHeight(totalHeight);
+end
+
+APII_TextBlockCopyStringMixin = CreateFromMixins(APII_TextBlockMixin);
+
+local COPY_STRING_PADDING = 10;
+
+function APII_TextBlockCopyStringMixin:Initialize(blockData)
+	self.blockData = blockData;
+
+	local basicString = blockData.textString;
+	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
+	local width = self:GetWidth() - leftPadding - rightPadding;
+	local textAreaWidth = width - COPY_STRING_PADDING * 2;
+
+	local textArea = self:GetTextArea()
+	textArea:SetPoint("TOPLEFT", leftPadding + COPY_STRING_PADDING, -topPadding - COPY_STRING_PADDING);
+	textArea:SetAvailableWidth(textAreaWidth);
+	textArea:SetText(basicString, blockData.font);
+
+	self.Background:SetPoint("TOPLEFT", leftPadding, -topPadding);
+	self.Background:SetWidth(width);
+	self.Background:SetHeight(textArea:GetHeight() + COPY_STRING_PADDING * 2);
+
+	local totalHeight = textArea:GetHeight() + topPadding + bottomPadding + COPY_STRING_PADDING * 2;
+	self:SetHeight(totalHeight);
+end
+
+
+
+APII_SystemButtonMixin = {};
+
+function APII_SystemButtonMixin:Initialize(data)
+	self.data = data;
+	self.Name:SetText(data.Name);
+	self.Namespace:SetText(data.Namespace);
+	self.Namespace:SetTextColor(DISABLED_FONT_COLOR:GetRGB());
+end
+
+function APII_SystemButtonMixin:OnClick()
+	
+	if (not self.parentFrame or not self.data) then return; end
+
+	self.parentFrame:OpenSystem(self.data);
+end
+
+
+
+local function CreateFieldString(field)
+	local text = ("%s - %s"):format(field:GenerateAPILink(), field:GetLuaType());
+	if (field.Mixin) then
+		local mixinString = string.format(" (|Hapi:mixin:%s|h%s|h)", field.Mixin, field.Mixin);
+		text = text .. APII_MIXIN_COLOR:WrapTextInColorCode(mixinString);
+	end
+	if (field:IsOptional()) then
+		if (field.Default ~= nil) then
+			text = ("%s (default:%s)"):format(text, tostring(field.Default));
+		else
+			text = text .. APII_COMMENT_COLOR:WrapTextInColorCode(" (optional)");
+		end
+	end
+	if (field.Documentation) then
+		local documentationString = table.concat(field.Documentation, " ");
+		documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
+		text = ("%s  %s"):format(text, documentationString);
+	end
+	return text;
+end
+
+APII_ContentBlockDataManagerMixin = {};
+
+local LEFT_PADDING_DEFAULT = 40;
+local LEFT_PADDING_INDENTED = 50;
+local LEFT_PADDING_COPYSTRING = 38;
+local RIGHT_PADDING_DEFAULT = 40;
+local BOTTOM_PADDING_DEFAULT = 14;
+local BOTTOM_PADDING_TITLE = 6;
+
+function APII_ContentBlockDataManagerMixin:Init(apiInfo)
+	print("datamanager", apiInfo)
+	self.dataBlocks = {};
+
+	local isConstant = apiInfo.Type == "Constants";
+
+	do
+		local text = "Not part of a system";
+		if (apiInfo.System and not apiInfo.System.isFake) then
+			text = string.format("Part of the %s system", apiInfo.System:GenerateAPILink());
+		end
+		self:AddBasicBlock(APII_SYSTEM_SOURCE_COLOR:WrapTextInColorCode(text));
+	end
+
+	do
+		local clipboardString = apiInfo.LiteralName and apiInfo.LiteralName or apiInfo:GetClipboardString();
+
+		if (isConstant) then
+			clipboardString = "Constants." .. clipboardString;
+		end
+
+		self:AddCopyStringBlock(clipboardString);
+	end
+
+	local dataType = apiInfo:GetType();
+	if (dataType == "function") then
+		self:AddFunctionArguments("Arguments", apiInfo.Arguments);
+		self:AddFunctionArguments("Returns", apiInfo.Returns);
+
+	elseif (dataType == "table" and (apiInfo.Fields or apiInfo.Values)) then
+		if (apiInfo.Fields and #apiInfo.Fields > 0) then
+			local titleText = "Fields";
+			if (apiInfo.Type == "Enumeration") then
+				local lines = {};
+				tinsert(lines, "Num Values: " .. apiInfo.NumValues);
+				tinsert(lines, "Min Value: " .. apiInfo.MinValue);
+				tinsert(lines, "Max Value: " .. apiInfo.MaxValue);
+				local content = table.concat(lines, "|n");
+				self:AddIndentedBlock(content);
+
+				titleText = "Values";
+			end
+			self:AddTitleBlock(titleText);
+
+			local lines = {};
+			if (apiInfo.Fields) then
+				for i, fieldInfo in ipairs(apiInfo.Fields) do
+					local text = (apiInfo.Type == "Enumeration") and fieldInfo:GetSingleOutputLine() or
+					CreateFieldString(fieldInfo);
+					tinsert(lines, text);
+				end
+			end
+			local content = table.concat(lines, "|n");
+			self:AddIndentedBlock(content);
+		end
+
+		if (apiInfo.Values and #apiInfo.Values > 0) then
+			self:AddTitleBlock("Values");
+
+			local lines = {};
+			if (apiInfo.Values) then
+
+				for i, valueInfo in ipairs(apiInfo.Values) do
+					local text = valueInfo:GetSingleOutputLine()
+					tinsert(lines, text);
+				end
+			end
+			local content = table.concat(lines, "|n");
+			self:AddIndentedBlock(content);
+		end
+
+	elseif (dataType == "event" and apiInfo.Payload) then
+		self:AddTitleBlock("Payload");
+		local lines = {};
+		for i, payloadInfo in ipairs(apiInfo.Payload) do
+			local text = ("%d. %s"):format(i, CreateFieldString(payloadInfo));
+			tinsert(lines, text);
+		end
+		local content = table.concat(lines, "|n");
+		self:AddIndentedBlock(content);
+	end
+
+	if (apiInfo.Documentation) then
+		self:AddTitleBlock("Notes");
+		local lines = {};
+		for i, documentation in ipairs(apiInfo.Documentation) do
+			if (documentation == DETAILS_NO_PUBLIC) then
+				documentation = APII_NO_PUBLIC_COLOR:WrapTextInColorCode(documentation);
+			end
+			tinsert(lines, documentation);
+		end
+		local content = table.concat(lines, "|n");
+		self:AddIndentedBlock(content);
+	end
+end
+
+function APII_ContentBlockDataManagerMixin:EnumerateData()
+	return ipairs(self.dataBlocks);
+end
+
+function APII_ContentBlockDataManagerMixin:AddBasicBlock(text, font)
+	local block = {};
+	block.template = "APII_TextBlockTemplate";
+	block.textString = text;
+	block.font = font or GetFont("normal") -- "GameFontHighlight";
+	block.leftPadding = LEFT_PADDING_DEFAULT;
+	block.rightPadding = RIGHT_PADDING_DEFAULT;
+	block.bottomPadding = BOTTOM_PADDING_DEFAULT;
+	tinsert(self.dataBlocks, block);
+	return block;
+end
+
+function APII_ContentBlockDataManagerMixin:AddIndentedBlock(text)
+	local block = self:AddBasicBlock(text);
+	block.leftPadding = LEFT_PADDING_INDENTED;
+	return block;
+end
+
+function APII_ContentBlockDataManagerMixin:AddTitleBlock(text)
+	local block = self:AddBasicBlock(text, GetFont("big")) -- "GameFontHighlightMedium");
+	block.bottomPadding = BOTTOM_PADDING_TITLE;
+	return block;
+end
+
+function APII_ContentBlockDataManagerMixin:AddCopyStringBlock(text)
+	local block = self:AddBasicBlock(text);
+	block.template = "APII_TextBlockCopyStringTemplate";
+	block.leftPadding = LEFT_PADDING_COPYSTRING;
+	return block;
+end
+
+function APII_ContentBlockDataManagerMixin:AddFunctionArguments(label, argumentTable)
+	if (argumentTable) then
+		self:AddTitleBlock(label);
+
+		local lines = {};
+		for i, argumentInfo in ipairs(argumentTable) do
+			if (argumentInfo:GetStrideIndex() == 1) then
+				local strideLine = "(Variable arguments)";
+				table.insert(lines, strideLine);
+			end
+			local text = ("%d. %s"):format(i, CreateFieldString(argumentInfo));
+			table.insert(lines, text);
+		end
+
+		local content = table.concat(lines, "|n");
+		self:AddIndentedBlock(content);
+	end
+end
+
+
+APII_ContentBlockManagerMixin = {};
+
+function APII_ContentBlockManagerMixin:Init(ownerFrame, contentBlockFactory)
+	self.ownerFrame = ownerFrame;
+	self.contentBlockFactory = contentBlockFactory;
+	self.activeBlocks = {};
+	self.reusableBlocks = {};
+end
+
+function APII_ContentBlockManagerMixin:MakeBlocksActiveReusable()
+	local temp = self.reusableBlocks;
+	self.reusableBlocks = self.activeBlocks;
+	self.activeBlocks = temp;
+end
+
+function APII_ContentBlockManagerMixin:GetBlockOfType(frameTemplate)
+	if (not self.ownerFrame or not self.contentBlockFactory) then return; end
+
+	local block = nil;
+	local reusableBlocks = self.reusableBlocks[frameTemplate];
+	if (reusableBlocks and #reusableBlocks > 0) then
+		block = reusableBlocks[1];
+		block:ClearAllPoints();
+		tremove(reusableBlocks, 1);
+	end
+
+	if (not block) then
+		block = self.contentBlockFactory:Create(self.ownerFrame, frameTemplate);
+	end
+
+	local activeBlocks = self.activeBlocks[frameTemplate];
+	if (not activeBlocks) then
+		activeBlocks = {};
+		self.activeBlocks[frameTemplate] = activeBlocks;
+	end
+	tinsert(activeBlocks, block);
+
+	return block;
+end
+
+function APII_ContentBlockManagerMixin:ReleaseReusable()
+	if (not self.ownerFrame or not self.contentBlockFactory) then return; end
+
+	for template, templateBlocks in pairs(self.reusableBlocks) do
+		for k, block in ipairs(templateBlocks) do
+			self.contentBlockFactory:Release(block);
+		end
+		wipe(templateBlocks);
+	end
+end
+
+function APII_ContentBlockManagerMixin:DoForEveryActiveBlock(func, ...)
+	if (type(func) ~= "function") then return; end
+	
+	for template, templateBlocks in pairs(self.activeBlocks) do
+		for k, block in ipairs(templateBlocks) do
+			func(block, ...);
+		end
+	end
+end
+
+
+
+APII_SystemContentMixin = CreateFromMixins(CallbackRegistryMixin);
+
+APII_SystemContentMixin:GenerateCallbackEvents(
+	{
+		"ExpandToggled";
+		"OnHyperlinkClick";
+	}
+);
+
+function APII_SystemContentMixin:OnClick()
+	self:TriggerEvent(APII_SystemContentMixin.Event.ExpandToggled, self.data);
+end
+
+function APII_SystemContentMixin:OnHyperlinkClick(link, text, button)
+	self:TriggerEvent(APII_SystemContentMixin.Event.OnHyperlinkClick, link);
+end
+
+do
+	local function SetBlockHyperlinkingEnabled(block, enable)
+		block:SetHyperlinkingEnabled(enable);
+	end
+
+	function APII_SystemContentMixin:SetHyperlinkingEnabled(enable)
+		if (not self.contentBlockManager) then return; end
+
+		self.contentBlockManager:DoForEveryActiveBlock(SetBlockHyperlinkingEnabled, enable);
+	end
+end
+
+function APII_SystemContentMixin:Initialize(data, contentBlockFactory, expanded)
+	self.data = data;
+	local apiInfo = data;
+	local totalHeight = 0;
+
+	if (not self.contentBlockManager) then
+		self.contentBlockManager = CreateAndInitFromMixin(APII_ContentBlockManagerMixin, self, contentBlockFactory);
+	end
+
+	self.TitleButton.Label:SetText(data:GetSingleOutputLine());
+	self.TitleButton.BGRight:SetAtlas(expanded and "Options_ListExpand_Right_Expanded" or "Options_ListExpand_Right");
+
+	totalHeight = totalHeight + self.TitleButton:GetHeight();
+
+	self.contentBlockManager:MakeBlocksActiveReusable();
+
+
+	local function GetOrCreateContentBlock(frameTemplate)
+		return self.contentBlockManager:GetBlockOfType(frameTemplate);
+	end
+
+	self.ClipboardString:Hide();
+	self.EditBox:Hide();
+	self.Html:Hide();
+
+	if (expanded) then
+		if (not apiInfo.apiiData) then
+			apiInfo.apiiData = CreateAndInitFromMixin(APII_ContentBlockDataManagerMixin, apiInfo);
+		end
+		local anchor = self.TitleButton;
+		local yOffset = 8;
+		totalHeight = totalHeight + yOffset;
+
+		if (apiInfo.apiiData) then
+			local frameWidth = floor(self:GetWidth());
+			for k, blockData in apiInfo.apiiData:EnumerateData() do
+				local block = GetOrCreateContentBlock(blockData.template);
+				if (block) then
+					block:SetParent(self);
+					block:SetPoint("TOP", anchor, "BOTTOM", 0, -yOffset);
+					block:SetPoint("LEFT", self);
+					block:SetWidth(frameWidth)
+					block:Initialize(blockData);
+					block:Show();
+					totalHeight = totalHeight + block:GetHeight();
+					anchor = block;
+				end
+
+				yOffset = 0;
+			end
+		end
+	else
+		self.ClipboardString:Hide();
+		self.EditBox:Hide();
+		self.Html:Hide();
+	end
+
+	self.contentBlockManager:ReleaseReusable();
+	self:SetHeight(totalHeight);
+end
+
+
+APII_CoreMixin = {};
+
+function APII_CoreMixin:OnDragStop()
+	if (not self.SystemContentScrollBox:GetView()) then return; end
+
+	self:UpdateSystemContent()
+
+	--self.SystemContentScrollBox
+
+
+	-- local newWidth = self.SystemContentScrollBox:GetWidth();
+	-- for k, frame in self.SystemContentScrollBox:EnumerateFrames() do
+	-- 	frame:SetFixedWidth(newWidth);
+	-- end
+
+	-- local numChildren = self.SystemContentScrollBox:GetNumChildren()
+end
+
+function APII_CoreMixin:OnLoad()
+	self.debug = APII;
+
+	
+
+
+	ButtonFrameTemplate_HidePortrait(self)
+	self:SetClampedToScreen(true);
+	self:SetTitle("APIInterface");
+	self:SetResizeBounds(250, 200);
+
+	self.Bg:SetPoint("BOTTOMRIGHT", self, -2, 3);
+
+	self.contentBlockFactory = CreateFrameFactory();
+
+	do
+		local view = CreateScrollBoxListLinearView();
+		view:SetElementInitializer("APII_SystemButtonTemplate", function(frame, data)
+			frame.parentFrame = self;
+			frame:Initialize(data);
+			
+		end);
+		ScrollUtil.InitScrollBoxListWithScrollBar(self.SystemScrollBox, self.SystemScrollBar, view);
+	end
+
+	do
+		local padding = 0;
+		local spacing = 0;
+		local view = CreateScrollBoxListLinearView(padding, padding, padding, padding, spacing);
+
+		local function ToggleAPI(_, api)
+			if (APII.openedAPIs[api]) then
+				APII.openedAPIs[api] = nil;
+			else
+				APII.openedAPIs[api] = true;
+			end
+			--self:UpdateSystemContent();
+			--self.SystemContentScrollBox:Rebuild();
+			self.SystemContentScrollBox:SetDataProvider(self.SystemContentScrollBox:GetDataProvider(), ScrollBoxConstants.RetainScrollPosition);
+		end
+
+		local function OnHyperlinkClick(_, link)
+			local apiType, name, system = link:match("api:(%a+):(%a+):(%a*):?") ;
+			local apiInfo = APIDocumentation:FindAPIByName(apiType, name, system);
+			print("here", apiType, name, system, apiInfo);
+
+			SearchBoxTemplate_ClearText(self.TopBar.GeneralSearch);
+			SearchBoxTemplate_ClearText(self.SystemSearch);
+
+			if (apiInfo) then
+				local systemToOpen = nil;
+				local apiToShow = nil;
+				if (apiInfo:GetType() == "system") then
+					systemToOpen = apiInfo;
+				else
+					if (apiInfo.System) then
+						systemToOpen = apiInfo.System;
+						apiToShow = apiInfo;
+						APII.openedAPIs[apiInfo] = true;
+					end
+				end
+
+				if(systemToOpen and APII.openedSystem ~= systemToOpen) then
+					APII.openedSystem = systemToOpen;
+					self:UpdateSystemContent("", true);
+				end
+
+				if (apiToShow) then
+					self.SystemContentScrollBox:SetDataProvider(self.SystemContentScrollBox:GetDataProvider(), ScrollBoxConstants.RetainScrollPosition);
+					self.SystemContentScrollBox:ScrollToElementData(apiToShow);
+				end
+			end
+			
+			
+
+		end
+
+		view:SetElementInitializer("APII_SystemContentTemplate", function(frame, data)
+			frame:RegisterCallback(APII_SystemContentMixin.Event.ExpandToggled, ToggleAPI, self);
+			frame:RegisterCallback(APII_SystemContentMixin.Event.OnHyperlinkClick, OnHyperlinkClick, self);
+			frame:Initialize(data, self.contentBlockFactory, APII.openedAPIs[data]);
+		end);
+		view:SetElementResetter(function(frame, data)
+			frame:UnregisterCallback(APII_SystemContentMixin.Event.ExpandToggled, self);
+			frame:UnregisterCallback(APII_SystemContentMixin.Event.OnHyperlinkClick, self);
+		end);
+		view:SetElementExtentCalculator(function (index, data)
+			local dummy = self.SystemContentScrollBox.ContentDummy;
+			dummy:Initialize(data, self.contentBlockFactory, APII.openedAPIs[data]);
+			return dummy:GetHeight();
+		end);
+		-- view:SetElementFactory(function(factory, elementData)
+		-- 	factory("APII_SystemContentTemplate", function(frame, data)
+		-- 		frame.parentFrame = self;
+		-- 		frame:Initialize(data);
+		-- 	end);
+		-- end);
+
+		ScrollUtil.InitScrollBoxListWithScrollBar(self.SystemContentScrollBox, self.SystemContentScrollBar, view);
+
+	end
+
+	self.SystemSearch:RegisterCallback(APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
+		if (not userInput) then return; end
+		self:UpdateSystemsList(text);
+	 end, self);
+	self.TopBar.GeneralSearch:RegisterCallback(APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
+		if (not userInput) then return; end
+		APII.openedSystem = nil;
+		self:UpdateSystemsList(text);
+		self:UpdateSystemContent(text);
+		print(text, userInput) end
+		, self);
+	
+
+
+	-- This has to be last
+	local minWidth = 700;
+	local minHeight = 450;
+	local maxWidth, maxHeight = GetPhysicalScreenSize();
+	self.ResizeButton:Init(self, minWidth, minHeight, maxWidth, maxHeight);
+	self.ResizeButton:SetOnResizeStoppedCallback(function() self:OnDragStop() end)
+
+	self.g = true;
+
+end
+
+function APII_CoreMixin:OnUpdate()
+	if (self.shiftDown ~= IsShiftKeyDown()) then
+		self.shiftDown = IsShiftKeyDown();
+
+		for k, frame in self.SystemContentScrollBox:EnumerateFrames() do
+			frame:SetHyperlinkingEnabled(self.shiftDown);
+		end
+		--print("Shift", self.shiftDown)
+	end
+end
+
+function APII_CoreMixin:OnShow()
+	if (not self.initialized) then
+		self.initialized = true;
+		if (not APIDocumentation) then
+			C_AddOns.LoadAddOn("Blizzard_APIDocumentationGenerated");
+		end
+
+		AlterOfficialDocumentation();
+	end
+
+
+
+	
+
+
+	
+
+	self:UpdateSystemsList();
+end
+
+function APII_CoreMixin:UpdateSystemsList(searchString)
+	local dataProvider = CreateDataProvider();
+
+	local systemList = APIDocumentation.systems;
+	if (searchString and #searchString > 0) then
+		systemList = {};
+		APIDocumentation:AddAllMatches(APIDocumentation.systems, systemList, searchString);
+	end
+
+	for k, system in ipairs(systemList) do
+		dataProvider:Insert(system);
+	end
+
+	self.SystemScrollBox:SetDataProvider(dataProvider, ScrollBoxConstants.RetainScrollPosition);
+end
+
+function APII_CoreMixin:OpenSystem(system)
+	APII.openedSystem = system;
+	wipe(APII.openedAPIs);
+
+	if (not system) then return; end
+
+	self:UpdateSystemContent();
+end
+
+function APII_CoreMixin:OnSizeChanged()
+	--self:UpdateSystemContent();
+end
+
+function APII_CoreMixin:UpdateSystemContent(searchString, resetPosition)
+	if (not self.g) then return; end
+
+	local dataProvider = CreateDataProvider();
+
+	local apiMatches = nil;
+	if (APII.openedSystem) then
+		
+		if (searchString and #searchString > 0) then
+			apiMatches = APII.openedSystem:FindAllAPIMatches(searchString);
+		else
+			apiMatches = APII.openedSystem:ListAllAPI();
+		end
+		
+		--apiMatches = APIDocumentation:FindAllAPIMatches("quest");
+		print("- - - -")
+		print(apiMatches, apiMatches and #apiMatches or "");
+	else
+		if (searchString and #searchString > 0) then
+			apiMatches = APIDocumentation:FindAllAPIMatches(searchString);
+		end
+	end
+
+	if (apiMatches) then
+			for k, info in ipairs(apiMatches.functions) do
+				dataProvider:Insert(info);
+			end
+
+			for k, info in ipairs(apiMatches.events) do
+				dataProvider:Insert(info);
+			end
+
+			for k, info in ipairs(apiMatches.tables) do
+				dataProvider:Insert(info);
+			end
+		end
+
+	self.SystemContentScrollBox:SetDataProvider(dataProvider, resetPosition and ScrollBoxConstants.DiscardScrollPosition or ScrollBoxConstants.RetainScrollPosition);
+end
+
+function APII_CoreMixin:CloseAllAPI()
+	wipe(APII.openedAPIs);
+end

@@ -39,7 +39,20 @@
         "ScrollBoxConstants",
         "EventTraceTooltip",
         "GameTooltip_AddHighlightLine",
-        "GameTooltip_AddColoredDoubleLine"
+        "GameTooltip_AddColoredDoubleLine",
+        "CreateScrollBoxListLinearView",
+        "CreateDataProvider",
+        "LayoutMixin",
+        "ARENA",
+        "CreateFramePool",
+        "CreateFrameFactory",
+        "Background",
+        "CurrencyCallbackRegistry",
+        "SearchBoxTemplate_OnLoad",
+        "SearchBoxTemplate_ClearText",
+        "SystemsAPIMixin",
+        "BaseAPIMixin",
+        "FieldsAPIMixin"
     ],
     "Lua.diagnostics.disable": [
         "undefined-field",
