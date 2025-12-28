@@ -52,7 +52,19 @@
         "SearchBoxTemplate_ClearText",
         "SystemsAPIMixin",
         "BaseAPIMixin",
-        "FieldsAPIMixin"
+        "FieldsAPIMixin",
+        "InputBoxInstructions_OnTextChanged",
+        "Clamp",
+        "EnumUtil",
+        "FunctionsAPIMixin",
+        "ApproximatelyEqual",
+        "LayoutIndexComparator",
+        "OTHER",
+        "FACTION",
+        "GameTooltip_SetTitle",
+        "GameTooltip_AddNormalLine",
+        "GameTooltip_AddInstructionLine",
+        "GameTooltip_AddColoredLine"
     ],
     "Lua.diagnostics.disable": [
         "undefined-field",

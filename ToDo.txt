@@ -1,0 +1,3 @@
+Show conetent count (visible/total)
+Toggle button for hyperlink
+Plaintext option
