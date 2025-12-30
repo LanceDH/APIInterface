@@ -64,7 +64,9 @@
         "GameTooltip_SetTitle",
         "GameTooltip_AddNormalLine",
         "GameTooltip_AddInstructionLine",
-        "GameTooltip_AddColoredLine"
+        "GameTooltip_AddColoredLine",
+        "Lerp",
+        "TextureKitConstants"
     ],
     "Lua.diagnostics.disable": [
         "undefined-field",

@@ -448,6 +448,7 @@
 		<HighlightTexture atlas="PetList-ButtonHighlight"/>
 
 		<Scripts>
+			<OnLoad method="OnLoad"/>
 			<OnClick method="OnClick"/>
 		</Scripts>
 	</Button>
@@ -458,7 +459,7 @@
 				<Anchors>
 					<Anchor point="TOPLEFT"/>
 				</Anchors>
-				<FontString inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4">
+				<FontString inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4" indented="true">
 					<!-- <Color r="0.95" g="0.95" b="0.95"/> -->
 				</FontString>
 
@@ -469,14 +470,14 @@
 				</Scripts>
 			</SimpleHTML>
 
-			<EditBox parentKey="EditBox" autoFocus="false" multiLine="true" hidden="false">
+			<EditBox parentKey="EditBox" mixin="APII_EditBoxMixin" autoFocus="false" multiLine="true" hidden="false">
 				<Anchors>
 					<Anchor point="TOPLEFT"/>
 				</Anchors>
 				<HitRectInsets>
 					<AbsInset left="-20" right="-20" top="-2" bottom="-2"/>
 				</HitRectInsets>
-				<FontString parentKey="FontString" inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4"/>
+				<FontString parentKey="FontString" inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4" indented="true"/>
 
 				<Layers>
 					<Layer level="ARTWORK">
@@ -489,51 +490,31 @@
 					</Layer>
 				</Layers>
 
-				<Animations>
-					<AnimationGroup parentKey="CheckAnim" setToFinalAlpha="true" looping="NONE">
-						<Alpha parentKey="Checkmark" childKey="Checkmark" fromAlpha="1" toAlpha="0"  Duration="0.6" order="1" />
-						<Scale parentKey="Checkmark" childKey="Checkmark" fromScaleX="0.7" toScaleX="1.5" smoothing="NONE" fromScaleY="0.7" toScaleY="1.5" Duration="0.6" order="1"/>
-					</AnimationGroup>
-				</Animations>
-
 				<Scripts>
-					<OnLoad>
-						self:SetText("This is testing text");
-					</OnLoad>
-					<OnEnterPressed>
-						self:ClearFocus();
-					</OnEnterPressed>
-					<OnEditFocusLost>
-						self:ClearHighlightText();
-					</OnEditFocusLost>
-					<OnKeyDown>
-						if (IsControlKeyDown() and (key == "C" or key == "X")) then
-							self.CheckAnim:Stop();
-							self.CheckAnim:Play();
-							PlaySound(SOUNDKIT.TUTORIAL_POPUP);
-							<!-- Delay until next frame or it will prevent the actual copy -->
-							<!-- C_Timer.After(0, function() self:ClearFocus(); end); -->
-						end
-					</OnKeyDown>
-					<OnTextChanged>
-						if (userInput) then
-							self:SetText(self.originalText);
-							self:ClearFocus();
-						end
-					</OnTextChanged>
+					<OnLoad method="OnLoad"/>
+					<OnEnterPressed method="OnEnterPressed"/>
+					<OnEditFocusLost method="OnEditFocusLost"/>
+					<OnKeyDown method="OnKeyDown"/>
+					<OnTextChanged method="OnTextChanged"/>
+					<OnShow method="OnShow"/>
+					<OnHide method="OnHide"/>
 				</Scripts>
 			</EditBox>
 		</Frames>
 
 		<Layers>
 			<Layer level="ARTWORK">
-				<FontString parentKey="Text" inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4" hidden="true" nonspacewrap="true">
+				<FontString parentKey="Text" inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4" hidden="true" nonspacewrap="true" indented="true">
 					<Anchors>
 						<Anchor point="TOPLEFT"/>
 					</Anchors>
 				</FontString>
 			</Layer>
 		</Layers>
+
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
 	</Frame>
 
 	<Frame name="APII_TextBlockTemplate" mixin="APII_TextBlockMixin" virtual="true">
@@ -559,8 +540,6 @@
 				<KeyValues>
 					<KeyValue key="layoutType" value="UniqueCornersLayout" type="string"/>
 					<KeyValue key="layoutTextureKit" value="ui-hud-minimap-button" type="string"/>
-					<!-- <KeyValue key="layoutTextureKit" value="Common-Opacity-Background" type="string"/> -->
-					<!-- <KeyValue key="layoutTextureKit" value="ui-hud-minimap-button" type="string"/> -->
 				</KeyValues>
 				<Anchors>
 					<Anchor point="TOPRIGHT" relativePoint="TOPLEFT" x="-10" />
@@ -621,7 +600,7 @@
 				<Anchors>
 					<Anchor point="TOP" />
 					<Anchor point="LEFT" />
-					<Anchor point="RIGHT" />
+					<Anchor point="RIGHT" x="-1"/>
 				</Anchors>
 				<KeyValues>
 					<KeyValue key="layoutIndex" value="1" type="number"/>
@@ -721,13 +700,13 @@
 				</Texture>
 			</Layer>
 			<Layer level="BACKGROUND" textureSubLevel="1">
-				<Texture parentKey="HyperlinkGlow" alpha="0.6" atlas="!ItemUpgradeTooltip-NineSlice-EdgeLeft" hidden="true">
+				<Texture parentKey="HyperlinkGlow" alpha="0.8" atlas="!ItemUpgradeTooltip-NineSlice-EdgeLeft" hidden="true">
 					<Size x="32"/>
 					<Anchors>
 						<Anchor point="TOPLEFT" relativeKey="$parent.TitleButton" relativePoint="BOTTOMLEFT" y="4"/>
 						<Anchor point="BOTTOM" />
 					</Anchors>
-					<Color r="0.45" g="0.65" b="1" />
+					<Color r="0.4" g="0.7" b="1" />
 				</Texture>
 			</Layer>
 			<Layer level="BACKGROUND" textureSubLevel="2">
@@ -791,9 +770,23 @@
 				</Anchors>
 
 				<Frames>
-					<Button parentKey="HistoryBackButton" inherits="WowStyle2IconButtonTemplate" mixin="APII_HistoryButtonMixin">
+					<CheckButton parentKey="HighlightToggleButton" inherits="WowStyle2IconButtonTemplate" mixin="APII_CheckButtonMixin">
 						<Anchors>
 							<Anchor point="LEFT" x="10" y="-1"/>
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="normalAtlas" type="string" value="Soulbinds_Tree_Conduit_Icon_Utility"/>
+							<KeyValue key="iconWidth" type="number" value="24"/>
+							<KeyValue key="iconHeight" type="number" value="24"/>
+						</KeyValues>
+						<Scripts>
+							<OnClick method="OnClick"/>
+						</Scripts>
+					</CheckButton>
+
+					<Button parentKey="HistoryBackButton" inherits="WowStyle2IconButtonTemplate" mixin="APII_HistoryButtonMixin">
+						<Anchors>
+							<Anchor point="LEFT" relativeKey="$parent.HighlightToggleButton" relativePoint="RIGHT" x="4" y="0"/>
 						</Anchors>
 						<HitRectInsets>
 							<AbsInset left="2" right="3" top="2" bottom="4"/>
@@ -802,8 +795,6 @@
 							<KeyValue key="normalAtlas" type="string" value="common-dropdown-icon-back"/>
 							<KeyValue key="disabledAtlas" type="string" value="common-dropdown-icon-back-disabled"/>
 							<KeyValue key="delta" value="-1" type="number"/>
-							<KeyValue key="tooltipTitle" value="Back In History" type="string"/>
-							<KeyValue key="tooltipText" value="Hold shift to go to the very end" type="string"/>
 						</KeyValues>
 						<Scripts>
 							<OnLoad method="OnLoad"/>
@@ -824,8 +815,6 @@
 							<KeyValue key="normalAtlas" type="string" value="common-dropdown-icon-next"/>
 							<KeyValue key="disabledAtlas" type="string" value="common-dropdown-icon-next-disabled"/>
 							<KeyValue key="delta" value="1" type="number"/>
-							<KeyValue key="tooltipTitle" value="Forward In History" type="string"/>
-							<KeyValue key="tooltipText" value="Hold shift to go to the very front" type="string"/>
 						</KeyValues>
 						<Scripts>
 							<OnLoad method="OnLoad"/>
@@ -942,88 +931,43 @@
 					<Anchor point="LEFT" relativeKey="$parent.SystemScrollBar" relativePoint="RIGHT" x="5"/>
 					<Anchor point="RIGHT" relativeKey="$parent.SystemContentScrollBar" relativePoint="LEFT" x="-5"/>
 				</Anchors>
-			</Frame>
-
-			<Frame parentKey="SystemContent" mixin="APII_VerticalLayoutMixin">
-				<Anchors> 
-					<Anchor point="TOPLEFT" relativeKey="$parent.SystemContentScrollInset" x="4" y="-4"/>
-					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.SystemContentScrollInset" x="-4" y="3"/>
-				</Anchors>
 
 				<Frames>
-					<!-- <Frame name="Testing">
-						<Size y="50"/>
-						<Layers>
-							<Layer level="BACKGROUND">
-								<Texture alpha="0.5">
-									<Color r="0" g="0" b="0.2"/>
-								</Texture>
-							</Layer>
-						</Layers>
-					</Frame> -->
+					<Frame parentKey="SystemContent" mixin="APII_VerticalLayoutMixin">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.SystemContentScrollInset" x="4" y="-4" />
+							<Anchor point="BOTTOMRIGHT" relativeKey="$parent.SystemContentScrollInset" x="-4" y="3" />
+						</Anchors>
 
-					<EditBox parentKey="SystemContentSearch" inherits="APII_SearchBoxTempalte" hidden="true">
-						<Size y="20" />
-						<KeyValues>
-							<KeyValue key="instructionText" value="Search In System" type="string"/>
-							<KeyValue key="leftPadding" value="6" type="number"/>
-						</KeyValues>
-					</EditBox>
-
-					<!-- <Frame parentKey="InSystemBanner" hidden="true">
-						<Size y="22" />
-						<Layers>
-							<Layer level="ARTWORK">
-								 <Texture file="Interface\Buttons\UI-Listbox-Highlight2">
-									<Color r="0.6" g="0.75" b="0.75" a="0.2" />
-								</Texture>
-								<Texture atlas="thewarwithin-scenario-barframe-bordercenter" alpha="0.7" desaturated="true">
-									 <TexCoords left="0" right="1" top="0.1" bottom="1" />
-									 <Anchors>
-										<Anchor point="TOPLEFT" />
-										<Anchor point="BOTTOMRIGHT" y="-1" />
-									</Anchors>
-								</Texture>
-								
-								<FontString parentKey="Text" inherits="GameFontHighlightSmall" justifyH="CENTER" justifyV="MIDDLE">
-									<Anchors>
-										<Anchor point="TOPLEFT" x="20" y="0" />
-										<Anchor point="BOTTOMRIGHT" x="-30" y="1" />
-									</Anchors>
-								</FontString>
-							</Layer>
-						</Layers>
-					</Frame> -->
-
-					
-
-					<Frame parentKey="SystemContentScrollBox" inherits="WowScrollBoxList" setAllPoints="true">
-						<KeyValues>
-							<KeyValue key="wheelPanScalar" value="2" type="number"/>
-						</KeyValues>
 						<Frames>
-							<Frame parentKey="ContentDummy" inherits="APII_SystemContentTemplate" hidden="true">
-								<Anchors> 
-									<Anchor point="LEFT"/>
-									<Anchor point="RIGHT"/>
-								</Anchors>
+							<EditBox parentKey="SystemContentSearch" inherits="APII_SearchBoxTempalte" hidden="true">
+								<Size y="20" />
+								<KeyValues>
+									<KeyValue key="instructionText" value="Search In System" type="string" />
+									<KeyValue key="leftPadding" value="6" type="number" />
+								</KeyValues>
+							</EditBox>
+
+							<Frame parentKey="SystemContentScrollBox" inherits="WowScrollBoxList" setAllPoints="true">
+								<KeyValues>
+									<KeyValue key="wheelPanScalar" value="1" type="number" />
+								</KeyValues>
+								<Frames>
+									<Frame parentKey="ContentDummy" inherits="APII_SystemContentTemplate" hidden="true">
+										<Anchors>
+											<Anchor point="LEFT" />
+											<Anchor point="RIGHT" />
+										</Anchors>
+									</Frame>
+								</Frames>
 							</Frame>
 						</Frames>
-						<!-- <Layers>
-							<Layer level="BACKGROUND">
-								<Texture alpha="0.5">
-									<Color r="0" g="0" b="0.2"/>
-								</Texture>
-							</Layer>
-						</Layers> -->
+						<Scripts>
+							<OnLoad method="OnLoad" />
+						</Scripts>
 					</Frame>
 				</Frames>
-				<Scripts>
-					<OnLoad method="OnLoad"/>
-				</Scripts>
 			</Frame>
-
-			
 		</Frames>
 		
 		<Scripts>

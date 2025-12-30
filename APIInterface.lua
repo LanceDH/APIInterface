@@ -939,21 +939,107 @@ do
 
 		local anchor = nil;
 		for k, child in ipairs(visibleChildren) do
-			local lPadding, rPadding, tPadding, bPadding = GetChildPadding(child);
-			child:SetPoint("LEFT", self, lPadding, 0);
-			child:SetPoint("RIGHT", self, -rPadding, 0);
+			local lChildPadding, rChildPadding, tChildPadding, bChildPadding = GetChildPadding(child);
+			child:SetPoint("LEFT", self, lChildPadding, 0);
+			child:SetPoint("RIGHT", self, -rChildPadding, 0);
 			if (anchor) then
-				child:SetPoint("TOP", anchor, "BOTTOM", 0, -tPadding);
+				child:SetPoint("TOP", anchor, "BOTTOM", 0, -tChildPadding);
 			else
-				child:SetPoint("TOP", self, 0, -tPadding);
+				child:SetPoint("TOP", self, 0, -tChildPadding);
 			end
 			
 			anchor = child;
 
 			if (k == #visibleChildren) then
-				child:SetPoint("BOTTOM", self, 0, bPadding);
+				child:SetPoint("BOTTOM", self, 0, bChildPadding);
 			end
 		end
+	end
+end
+
+APII_EditBoxMixin = CreateFromMixins(CallbackRegistryMixin);
+
+APII_EditBoxMixin:GenerateCallbackEvents(
+	{
+		"OnTextChanged";
+	}
+);
+
+function APII_EditBoxMixin:OnLoad()
+	CallbackRegistryMixin.OnLoad(self);
+	self.defaultHighlightColor = CreateColor(self:GetHighlightColor());
+end
+
+function APII_EditBoxMixin:OnEnterPressed()
+	self:ClearFocus();
+end
+
+function APII_EditBoxMixin:OnEditFocusLost()
+	self:ClearHighlightText();
+end
+
+function APII_EditBoxMixin:OnKeyDown(key)
+	if (IsControlKeyDown() and (key == "C" or key == "X")) then
+		self:StartCopyHighlight();
+		PlaySound(SOUNDKIT.TUTORIAL_POPUP);
+	end
+end
+
+function APII_EditBoxMixin:OnTextChanged(userInput)
+	if (userInput) then
+		self:SetAlpha(0);
+		C_Timer.After(0, function()
+			self:SetAlpha(1);
+		end);
+		self:SetText(self.originalText);
+		self:ClearFocus();
+	end
+	self:TriggerEvent(APII_EditBoxMixin.Event.OnTextChanged, userInput);
+end
+
+function APII_EditBoxMixin:OnHide()
+	self:StopCopyHighlight();
+end
+
+function APII_EditBoxMixin:OnShow()
+	self:SetHighlightColor(0, 0 , 0, 0);
+
+	C_Timer.After(0, function()
+		self:SetHighlightColor(self.defaultHighlightColor:GetRGB());
+	end);
+end
+
+local COPY_HIGHLIGHT_DURATION = 0.3;
+-- local COPY_HIGHLIGHT_COLOR = CreateColor(0.2, 0.4, 0.2);
+local COPY_HIGHLIGHT_COLOR = CreateColor(0.6, 0.6, 0.2);
+
+function APII_EditBoxMixin:StartCopyHighlight()
+	self:SetHighlightColor(COPY_HIGHLIGHT_COLOR:GetRGB());
+	self.highlightTimer = COPY_HIGHLIGHT_DURATION;
+	if (not self.updateScriptSet) then
+		self:SetScript("OnUpdate", self.OnUpdate);
+		self.updateScriptSet = true;
+	end
+end
+
+function APII_EditBoxMixin:StopCopyHighlight()
+	self:SetHighlightColor(self.defaultHighlightColor:GetRGB());
+	self:SetScript("OnUpdate", nil);
+	self.updateScriptSet = false;
+end
+
+function APII_EditBoxMixin:OnUpdate(elapsed)
+	self.highlightTimer = Clamp(self.highlightTimer - elapsed, 0, COPY_HIGHLIGHT_DURATION);
+
+	local r, g, b = COPY_HIGHLIGHT_COLOR:GetRGB();
+	local rd, gd, bd = self.defaultHighlightColor:GetRGB();
+	local t = 1 - (self.highlightTimer / COPY_HIGHLIGHT_DURATION);
+	t = t * t * t;
+
+	self:SetHighlightColor(Lerp(r, rd, t), Lerp(g, gd, t), Lerp(b, bd, t));
+
+	if (self.highlightTimer <= 0) then
+		self:StopCopyHighlight();
 	end
 end
 
@@ -1002,7 +1088,26 @@ function APII_SearchboxMixin:OnEditFocusLost()
 end
 
 
-APII_HistoryButtonMixin = CreateFromMixins(CallbackRegistryMixin);
+local APII_TooltipMixin = {};
+
+function APII_TooltipMixin:SetTooltip(func)
+	self.tooltipFunc = func;
+end
+
+function APII_TooltipMixin:OnEnter()
+	if (self.tooltipFunc) then
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+		self.tooltipFunc(GameTooltip);
+		GameTooltip:Show();
+	end
+end
+
+function APII_TooltipMixin:OnLeave()
+	GameTooltip:Hide();
+end
+
+
+APII_HistoryButtonMixin = CreateFromMixins(CallbackRegistryMixin, APII_TooltipMixin);
 
 APII_HistoryButtonMixin:GenerateCallbackEvents(
 	{
@@ -1021,19 +1126,71 @@ end
 
 function APII_HistoryButtonMixin:OnEnter()
 	WowStyle2IconButtonMixin.OnEnter(self);
-	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-	GameTooltip:SetText(self.tooltipTitle);
-	GameTooltip:AddLine(self.tooltipText, 1, 1, 1, true);
-	GameTooltip:Show();
+	APII_TooltipMixin.OnEnter(self);
 end
 
 function APII_HistoryButtonMixin:OnLeave()
 	WowStyle2IconButtonMixin.OnLeave(self);
-	GameTooltip:Hide();
+	APII_TooltipMixin.OnLeave(self);
 end
 
 
 
+APII_CheckButtonMixin = CreateFromMixins(WowStyle2IconButtonMixin, CallbackRegistryMixin, APII_TooltipMixin);
+
+APII_CheckButtonMixin:GenerateCallbackEvents(
+	{
+		"OnClick";
+	}
+);
+
+function APII_CheckButtonMixin:OnLoad()
+	WowStyle2IconButtonMixin.OnLoad(self);
+	CallbackRegistryMixin.OnLoad(self);
+end
+
+function APII_CheckButtonMixin:OnButtonStateChanged()
+	self.Background:SetAtlas(self:GetBackgroundAtlas(), TextureKitConstants.UseAtlasSize);
+
+	local icon = self.normalAtlas;
+	local useAtlasSize = (not self.iconWidth or not self.iconHeight) and TextureKitConstants.UseAtlasSize or TextureKitConstants.IgnoreAtlasSize;
+	local alpha = self:GetIconHighlighted() and 1 or 0.5;
+	alpha = 1;
+	local saturation = self:GetIconHighlighted() and 1 or 0.5;
+	if (self.disabledAtlas) then
+		icon = self:IsEnabled() and self.normalAtlas or self.disabledAtlas;
+	end
+	self.Icon:SetAtlas(icon, useAtlasSize);
+	self.Icon:SetVertexColor(saturation, saturation, saturation);
+	self.Icon:SetAlpha(alpha);
+	if (not useAtlasSize) then
+		self.Icon:SetSize(self.iconWidth, self.iconHeight);
+	end
+end
+
+function APII_CheckButtonMixin:SetIconHighlighted(value)
+	self.highlightOverriden = value;
+	self:OnButtonStateChanged();
+end
+
+function APII_CheckButtonMixin:GetIconHighlighted()
+	return self:GetChecked() or self.highlightOverriden;
+end
+
+function APII_CheckButtonMixin:OnClick()
+	self:OnButtonStateChanged();
+	self:TriggerEvent(APII_CheckButtonMixin.Event.OnClick);
+end
+
+function APII_CheckButtonMixin:OnEnter()
+	WowStyle2IconButtonMixin.OnEnter(self);
+	APII_TooltipMixin.OnEnter(self);
+end
+
+function APII_CheckButtonMixin:OnLeave()
+	WowStyle2IconButtonMixin.OnLeave(self);
+	APII_TooltipMixin.OnLeave(self);
+end
 
 
 local function AlterOfficialDocumentation()
@@ -1266,9 +1423,22 @@ function APII_TextAreaMixin:GetFontString()
 	return self.Text;
 end
 
+function APII_TextAreaMixin:OnLoad()
+	local editBox = self:GetEditBox();
+	editBox:RegisterCallback(APII_EditBoxMixin.Event.OnTextChanged, function(_, userInput)
+			if (userInput) then
+				local html = self:GetHtml();
+				html:Show();
+				C_Timer.After(0, function() html:Hide(); end);
+			end
+		end, self);
+end
+
 function APII_TextAreaMixin:SetHyperlinkingEnabled(enable)
 	local html = self:GetHtml();
 	local editBox = self:GetEditBox();
+	html:Show();
+
 	if (enable) then
 		html:Show(enable);
 
@@ -1277,18 +1447,15 @@ function APII_TextAreaMixin:SetHyperlinkingEnabled(enable)
 		editBox:Hide();
 	else
 		-- Editbox text doesn't update until 1 frame after it is shown
-		-- Text can change while inivisble when content text gets re-used by the scrollview while hyperlinking is enabled (i.e. clicking a hyperlink)
+		-- Text can change while invisble when content text gets re-used by the scrollview while hyperlinking is enabled (i.e. clicking a hyperlink)
 		-- Keep html visible and show editbox with 0 opacity for 1 frame before actually switching
-		-- Fixing highlight color being visible for 1 frame by changing its alpha to 0;
+		-- TextHighlight issues are sorted in editbox mixin
 		editBox:Show();
 		editBox:SetAlpha(0);
-		local r, g, b, a = editBox:GetHighlightColor();
-		editBox:SetHighlightColor(r, g, b, 0);
 
 		C_Timer.After(0, function()
 			html:Hide();
 			editBox:SetAlpha(1);
-			editBox:SetHighlightColor(r, g, b, a);
 		end);
 	end
 end
@@ -1401,8 +1568,13 @@ function APII_TextBlockCopyStringMixin:Initialize(blockData)
 end
 
 
+APII_SystemButtonMixin = CreateFromMixins(CallbackRegistryMixin);
 
-APII_SystemButtonMixin = {};
+APII_SystemButtonMixin:GenerateCallbackEvents(
+	{
+		"OnClick";
+	}
+);
 
 function APII_SystemButtonMixin:Initialize(data)
 	self.data = data;
@@ -1414,9 +1586,7 @@ function APII_SystemButtonMixin:Initialize(data)
 end
 
 function APII_SystemButtonMixin:OnClick()
-	if (not self.parentFrame or not self.data) then return; end
-
-	self.parentFrame:OpenSystem(self.data);
+	self:TriggerEvent(APII_SystemButtonMixin.Event.OnClick, self.data);
 end
 
 
@@ -1449,10 +1619,10 @@ local LEFT_PADDING_INDENTED = 50;
 local LEFT_PADDING_COPYSTRING = 38;
 local RIGHT_PADDING_DEFAULT = 40;
 local BOTTOM_PADDING_DEFAULT = 14;
+local BOTTOM_PADDING_NEWLINE = 4;
 local BOTTOM_PADDING_TITLE = 6;
 
 function APII_ContentBlockDataManagerMixin:Init(apiInfo)
-	dprint("datamanager", apiInfo)
 	self.dataBlocks = {};
 
 	local isConstant = apiInfo.Type == "Constants";
@@ -1484,66 +1654,47 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 		if (apiInfo.Fields and #apiInfo.Fields > 0) then
 			local titleText = "Fields";
 			if (apiInfo.Type == "Enumeration") then
-				local lines = {};
-				tinsert(lines, "Num Values: " .. apiInfo.NumValues);
-				tinsert(lines, "Min Value: " .. apiInfo.MinValue);
-				tinsert(lines, "Max Value: " .. apiInfo.MaxValue);
-				local content = table.concat(lines, "|n");
-				self:AddIndentedBlock(content);
-
+				self:AddFieldBlock("Num Values: " .. apiInfo.NumValues);
+				self:AddFieldBlock("Min Value: " .. apiInfo.MinValue);
+				self:AddFieldBlock("Max Value: " .. apiInfo.MaxValue, true);
 				titleText = "Values";
 			end
 			self:AddTitleBlock(titleText);
 
-			local lines = {};
 			if (apiInfo.Fields) then
 				for i, fieldInfo in ipairs(apiInfo.Fields) do
-					local text = (apiInfo.Type == "Enumeration") and fieldInfo:GetSingleOutputLine() or
-					CreateFieldString(fieldInfo);
-					tinsert(lines, text);
+					local text = (apiInfo.Type == "Enumeration") and fieldInfo:GetSingleOutputLine() or CreateFieldString(fieldInfo);
+					self:AddFieldBlock(text, i == #apiInfo.Fields);
 				end
 			end
-			local content = table.concat(lines, "|n");
-			self:AddIndentedBlock(content);
 		end
 
 		if (apiInfo.Values and #apiInfo.Values > 0) then
 			self:AddTitleBlock("Values");
-
-			local lines = {};
 			if (apiInfo.Values) then
-
 				for i, valueInfo in ipairs(apiInfo.Values) do
 					local text = valueInfo:GetSingleOutputLine()
-					tinsert(lines, text);
+					self:AddFieldBlock(text, i == #apiInfo.Values);
 				end
 			end
-			local content = table.concat(lines, "|n");
-			self:AddIndentedBlock(content);
 		end
 
 	elseif (dataType == "event" and apiInfo.Payload) then
 		self:AddTitleBlock("Payload");
-		local lines = {};
 		for i, payloadInfo in ipairs(apiInfo.Payload) do
 			local text = ("%d. %s"):format(i, CreateFieldString(payloadInfo));
-			tinsert(lines, text);
+			self:AddFieldBlock(text, i == #apiInfo.Payload);
 		end
-		local content = table.concat(lines, "|n");
-		self:AddIndentedBlock(content);
 	end
 
 	if (apiInfo.Documentation) then
 		self:AddTitleBlock("Notes");
-		local lines = {};
 		for i, documentation in ipairs(apiInfo.Documentation) do
 			if (DOCUMENTATION_TO_COLOR_RED[documentation]) then
 				documentation = APII_NO_PUBLIC_COLOR:WrapTextInColorCode(documentation);
 			end
-			tinsert(lines, documentation);
+			self:AddFieldBlock(documentation, i == #apiInfo.Documentation);
 		end
-		local content = table.concat(lines, "|n");
-		self:AddIndentedBlock(content);
 	end
 
 	-- if (dataType == "function") then
@@ -1555,7 +1706,6 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 	-- 	url = url .. apiInfo.Name;
 	-- 	self:AddIndentedBlock(url);
 	-- end
-
 end
 
 function APII_ContentBlockDataManagerMixin:EnumerateData()
@@ -1580,6 +1730,14 @@ function APII_ContentBlockDataManagerMixin:AddIndentedBlock(text)
 	return block;
 end
 
+function APII_ContentBlockDataManagerMixin:AddFieldBlock(text, isLast)
+	local block = self:AddIndentedBlock(text);
+	if (not isLast) then
+		block.bottomPadding = BOTTOM_PADDING_NEWLINE;
+	end
+	return block;
+end
+
 function APII_ContentBlockDataManagerMixin:AddTitleBlock(text)
 	local block = self:AddBasicBlock(text, GetFont("big"))
 	block.bottomPadding = BOTTOM_PADDING_TITLE;
@@ -1594,30 +1752,27 @@ function APII_ContentBlockDataManagerMixin:AddCopyStringBlock(text)
 end
 
 function APII_ContentBlockDataManagerMixin:AddFunctionArguments(label, argumentTable)
-	if (argumentTable) then
+	if (argumentTable and #argumentTable > 0) then
 		self:AddTitleBlock(label);
 
-		local lines = {};
 		for i, argumentInfo in ipairs(argumentTable) do
 			if (argumentInfo:GetStrideIndex() == 1) then
 				local strideLine = "(Variable arguments)";
-				table.insert(lines, strideLine);
+				self:AddFieldBlock(strideLine);
 			end
 			local text = ("%d. %s"):format(i, CreateFieldString(argumentInfo));
-			table.insert(lines, text);
+			self:AddFieldBlock(text, i == #argumentTable);
 		end
-
-		local content = table.concat(lines, "|n");
-		self:AddIndentedBlock(content);
 	end
 end
 
 
+local APII_FrameFactory = CreateFrameFactory();
+
 APII_ContentBlockManagerMixin = {};
 
-function APII_ContentBlockManagerMixin:Init(ownerFrame, contentBlockFactory)
+function APII_ContentBlockManagerMixin:Init(ownerFrame)
 	self.ownerFrame = ownerFrame;
-	self.contentBlockFactory = contentBlockFactory;
 	self.activeBlocks = {};
 	self.reusableBlocks = {};
 end
@@ -1629,7 +1784,7 @@ function APII_ContentBlockManagerMixin:MakeBlocksActiveReusable()
 end
 
 function APII_ContentBlockManagerMixin:GetBlockOfType(frameTemplate)
-	if (not self.ownerFrame or not self.contentBlockFactory) then return; end
+	if (not self.ownerFrame) then return; end
 
 	local block = nil;
 	local reusableBlocks = self.reusableBlocks[frameTemplate];
@@ -1640,7 +1795,7 @@ function APII_ContentBlockManagerMixin:GetBlockOfType(frameTemplate)
 	end
 
 	if (not block) then
-		block = self.contentBlockFactory:Create(self.ownerFrame, frameTemplate);
+		block = APII_FrameFactory:Create(self.ownerFrame, frameTemplate);
 	end
 
 	local activeBlocks = self.activeBlocks[frameTemplate];
@@ -1654,11 +1809,11 @@ function APII_ContentBlockManagerMixin:GetBlockOfType(frameTemplate)
 end
 
 function APII_ContentBlockManagerMixin:ReleaseReusable()
-	if (not self.ownerFrame or not self.contentBlockFactory) then return; end
+	if (not self.ownerFrame) then return; end
 
 	for template, templateBlocks in pairs(self.reusableBlocks) do
 		for k, block in ipairs(templateBlocks) do
-			self.contentBlockFactory:Release(block);
+			APII_FrameFactory:Release(block);
 		end
 		wipe(templateBlocks);
 	end
@@ -1707,14 +1862,14 @@ do
 	end
 end
 
-function APII_SystemContentMixin:Initialize(data, contentBlockFactory, expanded)
+function APII_SystemContentMixin:Initialize(data, expanded)
 	self.data = data;
 	local apiInfo = data;
 	local totalHeight = 0;
 	self.isExpanded = expanded;
 
 	if (not self.contentBlockManager) then
-		self.contentBlockManager = CreateAndInitFromMixin(APII_ContentBlockManagerMixin, self, contentBlockFactory);
+		self.contentBlockManager = CreateAndInitFromMixin(APII_ContentBlockManagerMixin, self);
 	end
 
 	self.TitleButton.Label:SetText(data:GetSingleOutputLine());
@@ -1765,11 +1920,11 @@ function APII_CoreMixin:GetInSystemBanner()
 end
 
 function APII_CoreMixin:GetSystemContentSearch()
-	return self.SystemContent.SystemContentSearch;
+	return self.SystemContentScrollInset.SystemContent.SystemContentSearch;
 end
 
 function APII_CoreMixin:GetSystemContentScrollBox()
-	return self.SystemContent.SystemContentScrollBox;
+	return self.SystemContentScrollInset.SystemContent.SystemContentScrollBox;
 end
 
 function APII_CoreMixin:GetSystemScrollBox()
@@ -1798,6 +1953,10 @@ end
 
 function APII_CoreMixin:GetGlobalSearchDropdown()
 	return self.TopBar.SearchGlobalDropdown;
+end
+
+function APII_CoreMixin:GetHighlightToggleButton()
+	return self.TopBar.HighlightToggleButton;
 end
 
 function APII_CoreMixin:OnSizeChanged()
@@ -2074,38 +2233,56 @@ function APII_CoreMixin:OnLoad()
 
 	self.Bg:SetPoint("BOTTOMRIGHT", self, -2, 3);
 
-	self.contentBlockFactory = CreateFrameFactory();
-
 	local generalSearch = self:GetGeneralSearch();
 	
 
 	do
+		local function OnSystemClick(_, systemData)
+			local scrollTo = APII.openedSystem == nil;
+			self:OpenSystem(systemData);
+			if (scrollTo) then
+				local systemScroll = self:GetSystemScrollBox();
+				systemScroll:ScrollToElementData(systemData);
+			end
+		end
+
 		local view = CreateScrollBoxListLinearView();
 		view:SetElementInitializer("APII_SystemButtonTemplate", function(frame, data)
-			frame.parentFrame = self;
 			frame:Initialize(data);
-			
+			frame:RegisterCallback(APII_SystemButtonMixin.Event.OnClick, OnSystemClick, self);
 		end);
+		view:SetElementResetter(function(frame, data)
+			frame:UnregisterCallback(APII_SystemButtonMixin.Event.OnClick, self);
+		end);
+
 		local systemScrollBox = self:GetSystemScrollBox();
 		ScrollUtil.InitScrollBoxListWithScrollBar(systemScrollBox, self.SystemScrollBar, view);
 	end
 
 	do
 		local padding = 0;
+		local paddingBottom = 1;
+		local paddingRight = 0;
 		local spacing = 0;
-		local view = CreateScrollBoxListLinearView(padding, padding, padding, padding, spacing);
+		local view = CreateScrollBoxListLinearView(padding, paddingBottom, padding, paddingRight, spacing);
 		local systemContentScrollBox = self:GetSystemContentScrollBox();
 
 		local function ToggleAPI(_, api)
+			local scrollTo = false;
 			if (APII.openedAPIs[api]) then
 				APII.openedAPIs[api] = nil;
 				self:AddHistory(APII_HistoryReason.APIClose, api);
 			else
 				APII.openedAPIs[api] = true;
 				self:AddHistory(APII_HistoryReason.APIOpen, api);
+				scrollTo = true;
 			end
 
 			systemContentScrollBox:SetDataProvider(systemContentScrollBox:GetDataProvider(), ScrollBoxConstants.RetainScrollPosition);
+
+			if (scrollTo) then
+				systemContentScrollBox:ScrollToElementData(api, ScrollBoxConstants.AlignNearest);
+			end
 		end
 
 		local function OnHyperlinkClick(_, link, sourceAPI)
@@ -2142,8 +2319,9 @@ function APII_CoreMixin:OnLoad()
 					end
 				end
 
+				local differentSystem = systemToOpen ~= APII.openedSystem;
+
 				if(systemToOpen) then
-					local differentSystem = systemToOpen ~= APII.openedSystem;
 					self:OpenSystem(systemToOpen);
 					if (differentSystem) then
 						local systemScroll = self:GetSystemScrollBox();
@@ -2155,7 +2333,8 @@ function APII_CoreMixin:OnLoad()
 					APII.openedAPIs[apiInfo] = true;
 					self:AddHistory(APII_HistoryReason.APIOpen, apiInfo);
 					systemContentScrollBox:SetDataProvider(systemContentScrollBox:GetDataProvider(), ScrollBoxConstants.RetainScrollPosition);
-					systemContentScrollBox:ScrollToElementData(apiToShow);
+					local align = differentSystem and ScrollBoxConstants.AlignCenter or ScrollBoxConstants.AlignNearest;
+					systemContentScrollBox:ScrollToElementData(apiToShow, align);
 				end
 			end
 		end
@@ -2163,8 +2342,8 @@ function APII_CoreMixin:OnLoad()
 		view:SetElementInitializer("APII_SystemContentTemplate", function(frame, data)
 			frame:RegisterCallback(APII_SystemContentMixin.Event.ExpandToggled, ToggleAPI, self);
 			frame:RegisterCallback(APII_SystemContentMixin.Event.OnHyperlinkClick, OnHyperlinkClick, self);
-			frame:Initialize(data, self.contentBlockFactory, APII.openedAPIs[data]);
-			frame:SetHyperlinkingEnabled(IsShiftKeyDown());
+			frame:Initialize(data, APII.openedAPIs[data]);
+			frame:SetHyperlinkingEnabled(self:IsHyperlinkingActive());
 		end);
 		view:SetElementResetter(function(frame, data)
 			frame:UnregisterCallback(APII_SystemContentMixin.Event.ExpandToggled, self);
@@ -2172,7 +2351,7 @@ function APII_CoreMixin:OnLoad()
 		end);
 		view:SetElementExtentCalculator(function (index, data)
 			local dummy = systemContentScrollBox.ContentDummy;
-			dummy:Initialize(data, self.contentBlockFactory, APII.openedAPIs[data]);
+			dummy:Initialize(data, APII.openedAPIs[data]);
 			return dummy:GetHeight();
 		end);
 		-- view:SetElementFactory(function(factory, elementData)
@@ -2217,22 +2396,38 @@ function APII_CoreMixin:OnLoad()
 	local systemContentSearch = self:GetSystemContentSearch();
 	systemContentSearch:RegisterCallback(APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
 		if (not userInput) then return; end
-		self:UpdateSystemContent(true);
-		self:AddHistory(APII_HistoryReason.ContentSearch);
-	end, self);
+			self:UpdateSystemContent(true);
+			self:AddHistory(APII_HistoryReason.ContentSearch);
+		end, self);
 
 	systemContentSearch:RegisterCallback(APII_SearchboxMixin.Event.OnClearButtonClicked, function()
-		self:UpdateSystemContent(true);
-		self:AddHistory(APII_HistoryReason.ContentSearch);
-	end, self);
+			self:UpdateSystemContent(true);
+			self:AddHistory(APII_HistoryReason.ContentSearch);
+		end, self);
 
 
 	local backButton = self:GetHistoryBackButton();
 	backButton:RegisterCallback(APII_HistoryButtonMixin.Event.OnClick, function(_, delta) self:StepHistory(delta); end);
-	
+	backButton:SetTooltip(function()
+			GameTooltip_SetTitle(GameTooltip, "Back In History");
+			GameTooltip_AddInstructionLine(GameTooltip, "<Hold Shift to go to the very end>");
+		end);
+
 	local forwardButton = self:GetHistoryForwardButton();
 	forwardButton:RegisterCallback(APII_HistoryButtonMixin.Event.OnClick, function(_, delta) self:StepHistory(delta); end);
+	forwardButton:SetTooltip(function()
+			GameTooltip_SetTitle(GameTooltip, "Forward In History");
+			GameTooltip_AddInstructionLine(GameTooltip, "<Hold Shift to go to the very front>");
+		end);
 
+	local highlightButton = self:GetHighlightToggleButton();
+	highlightButton:RegisterCallback(APII_CheckButtonMixin.Event.OnClick, function() self:UpdateHyperlinking(); end, self);
+	highlightButton:SetTooltip(function(tooltip)
+			GameTooltip_SetTitle(tooltip, "Toggle Hyperlinks");
+			GameTooltip_AddNormalLine(tooltip, "Make API text clickable to hyperlink to other API.");
+			GameTooltip_AddInstructionLine(GameTooltip, "<Hold Shift to temporary enable hyperlinks>");
+		end);
+	
 
 	-- do
 	-- 	local function FilterDropdownSetup(dropdown, rootDescription)
@@ -2406,8 +2601,8 @@ function APII_CoreMixin:OnLoad()
 
 
 	-- This has to be last
-	local minWidth = 700;
-	local minHeight = 450;
+	local minWidth = 800;
+	local minHeight = 500;
 	local maxWidth, maxHeight = GetPhysicalScreenSize();
 	self.ResizeButton:Init(self, minWidth, minHeight, maxWidth, maxHeight);
 	self.ResizeButton:SetOnResizeStoppedCallback(function() self:OnDragStop() end)
@@ -2420,10 +2615,21 @@ function APII_CoreMixin:OnUpdate()
 	-- Doing this in OnUpdate because the event doesn't trigger with an editbox focused or clicking outside the game
 	if (self.shiftDown ~= IsShiftKeyDown()) then
 		self.shiftDown = IsShiftKeyDown();
-		local systemContentScrollBox = self:GetSystemContentScrollBox();
-		for k, frame in systemContentScrollBox:EnumerateFrames() do
-			frame:SetHyperlinkingEnabled(self.shiftDown);
-		end
+		self:UpdateHyperlinking();
+	end
+end
+
+function APII_CoreMixin:IsHyperlinkingActive()
+	return self.shiftDown or self:GetHighlightToggleButton():GetChecked();
+end
+
+function APII_CoreMixin:UpdateHyperlinking()
+	local highlightButton = self:GetHighlightToggleButton();
+	highlightButton:SetIconHighlighted(self.shiftDown);
+	local enableHyperlink = self:IsHyperlinkingActive();
+	local systemContentScrollBox = self:GetSystemContentScrollBox();
+	for k, frame in systemContentScrollBox:EnumerateFrames() do
+		frame:SetHyperlinkingEnabled(enableHyperlink);
 	end
 end
 
@@ -2565,8 +2771,7 @@ do
 		dprint(passed, "/", total);
 
 		local systemContentScrollBox = self:GetSystemContentScrollBox();
-		systemContentScrollBox:SetDataProvider(dataProvider,
-			resetPosition and ScrollBoxConstants.DiscardScrollPosition or ScrollBoxConstants.RetainScrollPosition);
+		systemContentScrollBox:SetDataProvider(dataProvider, resetPosition and ScrollBoxConstants.DiscardScrollPosition or ScrollBoxConstants.RetainScrollPosition);
 	end
 end
 
