@@ -454,6 +454,12 @@
 	</Button>
 
 	<Frame name="APII_TextAreaTemplate" mixin="APII_TextAreaMixin" virtual="true">
+		<KeyValues>
+			<KeyValue key="HitInsetLeft" type="number" value="-20"/>
+			<KeyValue key="HitInsetRight" type="number" value="-20"/>
+			<KeyValue key="HitInsetTop" type="number" value="-2"/>
+			<KeyValue key="HitInsetBottom" type="number" value="-2"/>
+		</KeyValues>
 		<Frames>
 			<SimpleHTML parentKey="Html" resizeToFitContents="true" hidden="true">
 				<Anchors>
@@ -515,6 +521,27 @@
 		<Scripts>
 			<OnLoad method="OnLoad"/>
 		</Scripts>
+	</Frame>
+
+	<Frame name="APII_TableTextAreaTemplate" inherits="APII_TextAreaTemplate" virtual="true">
+		<KeyValues>
+			<KeyValue key="HitInsetLeft" type="number" value="-4"/>
+			<KeyValue key="HitInsetRight" type="number" value="-4"/>
+			<KeyValue key="HitInsetTop" type="number" value="-4"/>
+			<KeyValue key="HitInsetBottom" type="number" value="-4"/>
+		</KeyValues>
+	</Frame>
+
+	<Frame name="APII_TableSeparatorTemplate" virtual="true">
+		<Size x="2"/>
+
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Background" setAllPoints="true" alpha="0.2" >
+					<Color r="0.0" g="0.0" b="0.0"/>
+				</Texture>
+			</Layer>
+		</Layers>
 	</Frame>
 
 	<Frame name="APII_TextBlockTemplate" mixin="APII_TextBlockMixin" virtual="true">
@@ -579,6 +606,70 @@
 				</Texture>
 			</Layer>
 		</Layers> -->
+
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+
+	<Frame name="APII_TextBlockTableTemplate" mixin="APII_TextBlockTableMixin" virtual="true">
+		<Frames>
+			<!-- <Frame parentKey="Background" mixin="NineSlicePanelMixin" alpha="0.5">
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+				</Anchors>
+				<KeyValues>
+					<KeyValue key="layoutType" value="UniqueCornersLayout" type="string"/>
+					<KeyValue key="layoutTextureKit" value="ui-hud-minimap-button" type="string"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativePoint="TOPLEFT" x="-10" />
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						self:OnLoad();
+						self:SetVertexColor(1,1,1,1);
+					</OnLoad>
+				</Scripts>
+			</Frame> -->
+
+			<Frame parentKey="TextArea" inherits="APII_TextAreaTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+				</Anchors>
+			</Frame>
+		</Frames>
+
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Background" setAllPoints="true" alpha="1.0" >
+					<Anchors>
+						<Anchor point="TOPLEFT"/>
+					</Anchors>
+					<Color r="0.0" g="0.0" b="0.0"/>
+				</Texture>
+			</Layer>
+			<Layer level="ARTWORK">
+				<Texture parentKey="StrideTexture" alpha="0.5" hidden="true">
+					<Size x="1"/>
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeKey="$parent.Background"/>
+						<Anchor point="BOTTOM" relativeKey="$parent.Background"/>
+					</Anchors>
+					<Color r="0.0" g="0.0" b="0.0"/>
+				</Texture>
+			</Layer>
+
+			<!-- <Layer level="BACKGROUND" textureSubLevel="1">
+				<Texture parentKey="BackgroundInset" setAllPoints="true" alpha="1">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeKey="$parent.Background" x="1" y="-1"/>
+						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.Background" x="-1" y="1"/>
+					</Anchors>
+					<Color r="0.07" g="0.07" b="0.07"/>
+				</Texture>
+			</Layer> -->
+		</Layers>
 
 		<Scripts>
 			<OnLoad method="OnLoad"/>

@@ -888,6 +888,21 @@ end
 SlashCmdList["APIISLASH"] = slashcmd
 
 
+local APII_StringTesterMixin = {};
+
+function APII_StringTesterMixin:Init()
+	self.frame = CreateFrame("Frame", nil, UIParent);
+	self.fontString = self.frame:CreateFontString(nil, nil, "GameFontHighlight");
+end
+
+function APII_StringTesterMixin:TestUnboundWidth(text)
+	self.fontString:SetText(text);
+	return self.fontString:GetUnboundedStringWidth();
+end
+
+local StringTester = CreateAndInitFromMixin(APII_StringTesterMixin);
+
+
 
 local function dprint(...)
 	if true then return; end
@@ -908,6 +923,9 @@ local APII_SYSTEM_SOURCE_COLOR = LIGHTGRAY_FONT_COLOR;
 local APII_NO_PUBLIC_COLOR = CreateColor(1, .2, .2);
 local APII_MIXIN_COLOR = BATTLENET_FONT_COLOR;
 local APII_NAMESPACE_COLOR = DISABLED_FONT_COLOR;
+local APII_VARIABLE_FIELD_COLOR = LIGHTYELLOW_FONT_COLOR;
+
+local APII_FrameFactory = CreateFrameFactory();
 
 APII_VerticalLayoutMixin = {};
 
@@ -1194,7 +1212,7 @@ end
 
 
 local function AlterOfficialDocumentation()
-	APII_ValueAPIMixin = CreateFromMixins(BaseAPIMixin);
+	APII_ValueAPIMixin = CreateFromMixins(FieldsAPIMixin);
 
 	function APII_ValueAPIMixin:GetParentName()
 		if self.Table then
@@ -1221,6 +1239,17 @@ local function AlterOfficialDocumentation()
 		end
 
 		return false;
+	end
+
+	function APII_ValueAPIMixin:GetValue()
+		local result;
+		-- This data makes no sense, so just get the value from the constant itself;
+		local constant = Constants[self:GetParentName()];
+		if (constant) then
+			result = constant[self:GetName()];
+		end
+
+		return result or "unknown";
 	end
 
 	function APII_ValueAPIMixin:GetSingleOutputLine()
@@ -1423,6 +1452,13 @@ function APII_TextAreaMixin:GetFontString()
 	return self.Text;
 end
 
+function APII_TextAreaMixin:GetEditBoxInsets()
+	return self.HitInsetLeft or 0
+			, self.HitInsetRight or 0
+			, self.HitInsetTop or 0
+			, self.HitInsetBottom or 0;
+end
+
 function APII_TextAreaMixin:OnLoad()
 	local editBox = self:GetEditBox();
 	editBox:RegisterCallback(APII_EditBoxMixin.Event.OnTextChanged, function(_, userInput)
@@ -1432,6 +1468,8 @@ function APII_TextAreaMixin:OnLoad()
 				C_Timer.After(0, function() html:Hide(); end);
 			end
 		end, self);
+
+	editBox:SetHitRectInsets(self:GetEditBoxInsets());
 end
 
 function APII_TextAreaMixin:SetHyperlinkingEnabled(enable)
@@ -1568,6 +1606,213 @@ function APII_TextBlockCopyStringMixin:Initialize(blockData)
 end
 
 
+
+APII_TextBlockTableMixin = CreateFromMixins(APII_TextBlockMixin);
+
+local TABLE_SPACING = 8;
+local TABLE_BORDER_SIZE = 5;
+
+function APII_TextBlockTableMixin:OnLoad()
+	APII_TextBlockMixin.OnLoad(self);
+	self.StrideTexture:SetColorTexture(APII_VARIABLE_FIELD_COLOR:GetRGB());
+	self.textAreas = {};
+	self.separators = {};
+end
+
+function APII_TextBlockTableMixin:SetHyperlinkingEnabled(enable)
+	for k, frame in ipairs(self.textAreas) do
+		frame:SetHyperlinkingEnabled(enable);
+	end
+end
+
+local TABLE_HEADER_COLOR = CreateColor(0.0, 0.0, 0.0, 0.3);
+local TABLE_ALTERNATE_LIGHT_COLOR = CreateColor(0.2, 0.2, 0.2, 0.25);
+local TABLE_ALTERNATE_DARK_COLOR = CreateColor(0.05, 0.05, 0.05, 0.10);
+
+function APII_TextBlockTableMixin:Initialize(blockData)
+	self.blockData = blockData;
+
+	for k, frame in ipairs(self.textAreas) do
+		APII_FrameFactory:Release(frame);
+	end
+	wipe(self.textAreas);
+
+	for k, frame in ipairs(self.separators) do
+		APII_FrameFactory:Release(frame);
+	end
+	wipe(self.separators);
+
+	if (not blockData.tableData) then
+		self:SetHeight(10);
+		return;
+	end
+
+	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
+	local width = self:GetWidth() - leftPadding - rightPadding;
+
+	local rowWidths = {};
+	for rowIndex, row in ipairs(blockData.tableData.tableData) do
+		--print("header:", row.isHeader);
+		for contentIndex, content in ipairs(row.content) do
+			if (not rowWidths[contentIndex] or rowWidths[contentIndex] < content.width) then
+				rowWidths[contentIndex] = content.width;
+			end
+			--print(content.text);
+		end
+	end
+
+	local xOffset = 0;
+	local yOffset = 0;
+	local rowSeparators = {};
+	for rowIndex, row in ipairs(blockData.tableData.tableData) do
+		xOffset = TABLE_BORDER_SIZE;
+		yOffset = yOffset + TABLE_BORDER_SIZE;
+		local rowHeight = 0
+		for columnIndex, content in ipairs(row.content) do
+			if (columnIndex > 1) then
+				local separator = APII_FrameFactory:Create(self, "APII_TableSeparatorTemplate");
+				separator:SetParent(self);
+				separator:Show();
+				separator:SetPoint("TOPLEFT", xOffset + leftPadding, -yOffset -topPadding);
+				tinsert(self.separators, separator);
+				tinsert(rowSeparators, separator);
+				xOffset = xOffset + separator:GetWidth() + TABLE_SPACING;
+			end
+
+			local columnWidth = rowWidths[columnIndex];
+			local textArea = APII_FrameFactory:Create(self, "APII_TableTextAreaTemplate");
+			local availableSpace = width - xOffset - TABLE_BORDER_SIZE;
+			if (columnIndex == #row.content) then
+				columnWidth = availableSpace;
+			else
+				columnWidth = min(availableSpace, columnWidth);
+			end
+			textArea:SetParent(self);
+			textArea:Show();
+			textArea:SetPoint("TOPLEFT", xOffset + leftPadding, -yOffset - topPadding);
+			textArea:SetAvailableWidth(columnWidth);
+			textArea:SetText(content.text, blockData.font);
+			tinsert(self.textAreas, textArea);
+			local areaHeight = textArea:GetHeight();
+			rowHeight = areaHeight > rowHeight and areaHeight or rowHeight;
+			xOffset = xOffset + columnWidth + TABLE_SPACING;
+		end
+
+		for k, separator in ipairs(rowSeparators) do
+			separator:SetHeight(rowHeight + TABLE_BORDER_SIZE * 2);
+		end
+		wipe(rowSeparators);
+
+		yOffset = yOffset + rowHeight + TABLE_BORDER_SIZE;
+	end
+
+	self:SetHeight(yOffset + topPadding + bottomPadding);
+
+	if true then return end
+
+	local basicString = blockData.textString;
+	
+	
+	local textAreaWidth = width - TABLE_BORDER_SIZE * 2;
+
+	
+
+	local rowContent = blockData.tableContent.content;
+	local columnWidths = blockData.tableContent.columnWidths;
+
+	local totalContentSize = 0;
+	for k, column in ipairs(rowContent) do
+		totalContentSize = totalContentSize + column.width;
+	end
+
+	local templateInfo = C_XMLUtil.GetTemplateInfo("APII_TableSeparatorTemplate");
+	local textSpace = textAreaWidth - (#rowContent-1) * (TABLE_SPACING + templateInfo.width);
+	print(textAreaWidth, "->", textSpace);
+	print(totalContentSize, textSpace, string.format("%.2f",( totalContentSize / textSpace) * 100))
+
+	for k, column in ipairs(rowContent) do
+		print(k, string.format("%.2f",( column.width / totalContentSize) *100));
+	end
+
+
+	local contentHeight = 0;
+	local xOffset = TABLE_BORDER_SIZE;
+	
+	local totalContentwidth = 0;
+	for k, column in ipairs(rowContent) do
+		if (#self.textAreas > 0) then
+			local separator = APII_FrameFactory:Create(self, "APII_TableSeparatorTemplate");
+			separator:SetParent(self);
+			separator:Show();
+			separator:SetPoint("TOPLEFT", xOffset + leftPadding, -topPadding);
+			tinsert(self.separators, separator);
+			xOffset = xOffset + separator:GetWidth()+ TABLE_SPACING;
+		end
+
+		local columnWidth = column.width;
+		--print(k, v, columnWidth);
+		local textArea = APII_FrameFactory:Create(self, "APII_TableTextAreaTemplate");
+		local availableSpace = width - xOffset - TABLE_BORDER_SIZE;
+		if (k == #rowContent) then
+			columnWidth = availableSpace;
+		else
+			columnWidth = min(availableSpace, columnWidth);
+		end
+		totalContentwidth = totalContentwidth + columnWidth;
+		textArea:SetParent(self);
+		textArea:Show();
+		textArea:SetPoint("TOPLEFT", xOffset + leftPadding, -topPadding - TABLE_BORDER_SIZE);
+		textArea:SetAvailableWidth(columnWidth);
+		textArea:SetText(column.text, blockData.font);
+		tinsert(self.textAreas, textArea);
+		
+		contentHeight = textArea:GetHeight();
+		xOffset = xOffset + columnWidth + TABLE_SPACING;
+		-- for cK, cV in ipairs(v.columnContent) do
+			
+		-- end
+
+		-- if (not minWidths[k]) then
+		-- 	minWidths[k] = 0;
+		-- end
+
+		-- local stringWidth = StringTester:TestUnboundWidth(v);
+		-- if (stringWidth > minWidths[k]) then
+		-- 	minWidths[k] = stringWidth;
+		-- end
+		-- print(k, v, stringWidth);
+	end
+
+	for k, separator in ipairs(self.separators) do
+		separator:SetHeight(contentHeight + TABLE_BORDER_SIZE * 2);
+	end
+	
+
+	local textArea = self:GetTextArea()
+	textArea:SetPoint("TOPLEFT", leftPadding + TABLE_BORDER_SIZE, -topPadding - TABLE_BORDER_SIZE);
+	textArea:SetAvailableWidth(textAreaWidth);
+	textArea:SetText(basicString, blockData.font);
+
+	self.Background:SetPoint("TOPLEFT", leftPadding, -topPadding);
+	self.Background:SetWidth(width);
+	self.Background:SetHeight(contentHeight + TABLE_BORDER_SIZE * 2);
+	local alternateColor = TABLE_HEADER_COLOR;
+	if (not blockData.tableContent.info.isHeader) then
+		alternateColor = blockData.index % 2 == 1 and TABLE_ALTERNATE_DARK_COLOR or TABLE_ALTERNATE_LIGHT_COLOR;
+	end
+	self.Background:SetColorTexture(alternateColor:GetRGBA());
+
+	local stride = blockData.tableContent.info.stride or 0;
+	self.StrideTexture:SetShown(stride > 0);
+	--self.Background:SetShown(blockData.index % 2 == 0);
+
+	local totalHeight = contentHeight + topPadding + bottomPadding + TABLE_BORDER_SIZE * 2;
+	self:SetHeight(totalHeight);
+end
+
+
+
+
 APII_SystemButtonMixin = CreateFromMixins(CallbackRegistryMixin);
 
 APII_SystemButtonMixin:GenerateCallbackEvents(
@@ -1612,6 +1857,45 @@ local function CreateFieldString(field)
 	return text;
 end
 
+local APII_TableContentMixin = {};
+do
+	local function CreateRowTable(isHeader)
+		local t = {
+			content = {};
+			isHeader = isHeader;
+		}
+		return t;
+	end
+
+	function APII_TableContentMixin:Init()
+		self.tableData = {};
+		self.currentRow = nil;
+	end
+
+	function APII_TableContentMixin:StartRow(isHeader)
+		self.currentRow = CreateRowTable(isHeader);
+		tinsert(self.tableData, isHeader and 1 or (#self.tableData + 1), self.currentRow);
+	end
+
+	function APII_TableContentMixin:AddRowText(text, minWidth)
+		if (not self.currentRow) then
+			self:StartRow();
+		end
+
+		local stringWidth = StringTester:TestUnboundWidth(text);
+		local entry = {
+			text = text;
+			width = stringWidth;
+			minWidth = minWidth or 0;
+		};
+		tinsert(self.currentRow.content, entry);
+	end
+
+	function APII_TableContentMixin:SetRowStride(stride)
+		self.currentRow.stride = stride;
+	end
+end
+
 APII_ContentBlockDataManagerMixin = {};
 
 local LEFT_PADDING_DEFAULT = 40;
@@ -1621,6 +1905,43 @@ local RIGHT_PADDING_DEFAULT = 40;
 local BOTTOM_PADDING_DEFAULT = 14;
 local BOTTOM_PADDING_NEWLINE = 4;
 local BOTTOM_PADDING_TITLE = 6;
+
+
+local function AddFieldRowToTableData(tableData, index, field)
+	tableData:StartRow();
+	
+	if (index) then
+		tableData:AddRowText(index..".");
+	end
+
+	tableData:AddRowText(field:GenerateAPILink());
+
+	local typeText = field:GetLuaType();
+	if (field.Mixin) then
+		local mixinString = string.format(" (|Hapi:mixin:%s|h%s|h)", field.Mixin, field.Mixin);
+		typeText = typeText .. APII_MIXIN_COLOR:WrapTextInColorCode(mixinString);
+	end
+	if (field:IsOptional()) then
+		if (field.Default ~= nil) then
+			local line = string.format(" (default:%s)", tostring(field.Default));
+			typeText = typeText .. APII_COMMENT_COLOR:WrapTextInColorCode(line);
+		else
+			typeText = typeText .. APII_COMMENT_COLOR:WrapTextInColorCode(" (optional)");
+		end
+	end
+	tableData:AddRowText(typeText);
+
+	if (field.Documentation) then
+		local documentationString = table.concat(field.Documentation, " ");
+		documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
+		tableData:AddRowText(documentationString);
+	end
+
+	local stride = field:GetStrideIndex() or 0;
+	if (stride > 0) then
+		tableData:SetRowStride(stride);
+	end
+end
 
 function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 	self.dataBlocks = {};
@@ -1652,39 +1973,90 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 
 	elseif (dataType == "table" and (apiInfo.Fields or apiInfo.Values)) then
 		if (apiInfo.Fields and #apiInfo.Fields > 0) then
-			local titleText = "Fields";
 			if (apiInfo.Type == "Enumeration") then
 				self:AddFieldBlock("Num Values: " .. apiInfo.NumValues);
 				self:AddFieldBlock("Min Value: " .. apiInfo.MinValue);
 				self:AddFieldBlock("Max Value: " .. apiInfo.MaxValue, true);
-				titleText = "Values";
-			end
-			self:AddTitleBlock(titleText);
+				self:AddTitleBlock("Values");
 
-			if (apiInfo.Fields) then
+				local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
+				local hasNote = false;
 				for i, fieldInfo in ipairs(apiInfo.Fields) do
-					local text = (apiInfo.Type == "Enumeration") and fieldInfo:GetSingleOutputLine() or CreateFieldString(fieldInfo);
-					self:AddFieldBlock(text, i == #apiInfo.Fields);
+					tableData:StartRow();
+					tableData:AddRowText(fieldInfo:GetLuaType());
+					tableData:AddRowText(fieldInfo:GenerateAPILink());
+					if (fieldInfo.Documentation) then
+						hasNote = true;
+						local documentationString = table.concat(fieldInfo.Documentation, " ");
+						documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
+						tableData:AddRowText(documentationString);
+					end
 				end
+
+				tableData:StartRow(true);
+				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
+				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
+				if (hasNote) then
+					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"), 200);
+				end
+				self:AddTableDataBlock(tableData);
+			else
+				self:AddTitleBlock("Fields");
+
+				local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
+				local hasNote = false;
+				for i, fieldInfo in ipairs(apiInfo.Fields) do
+					AddFieldRowToTableData(tableData, nil, fieldInfo);
+					hasNote = hasNote or fieldInfo.Documentation ~= nil;
+				end
+
+				tableData:StartRow(true);
+				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
+				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
+				if (hasNote) then
+					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"), 200);
+				end
+				self:AddTableDataBlock(tableData);
 			end
 		end
 
 		if (apiInfo.Values and #apiInfo.Values > 0) then
 			self:AddTitleBlock("Values");
-			if (apiInfo.Values) then
-				for i, valueInfo in ipairs(apiInfo.Values) do
-					local text = valueInfo:GetSingleOutputLine()
-					self:AddFieldBlock(text, i == #apiInfo.Values);
-				end
+
+			local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
+
+			for i, valueInfo in ipairs(apiInfo.Values) do
+				tableData:StartRow();
+				tableData:AddRowText(valueInfo:GenerateAPILink());
+				tableData:AddRowText(valueInfo:GetValue());
+				tableData:AddRowText(valueInfo:GetLuaType());
 			end
+
+			tableData:StartRow(true);
+			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
+			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
+			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"), 200);
+			self:AddTableDataBlock(tableData);
 		end
 
 	elseif (dataType == "event" and apiInfo.Payload) then
 		self:AddTitleBlock("Payload");
+
+		local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
+		local hasNote = false;
 		for i, payloadInfo in ipairs(apiInfo.Payload) do
-			local text = ("%d. %s"):format(i, CreateFieldString(payloadInfo));
-			self:AddFieldBlock(text, i == #apiInfo.Payload);
+			AddFieldRowToTableData(tableData, i, payloadInfo);
+			hasNote = hasNote or payloadInfo.Documentation ~= nil;
 		end
+
+		tableData:StartRow(true);
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
+		if (hasNote) then
+			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
+		end
+		self:AddTableDataBlock(tableData);
 	end
 
 	if (apiInfo.Documentation) then
@@ -1751,23 +2123,62 @@ function APII_ContentBlockDataManagerMixin:AddCopyStringBlock(text)
 	return block;
 end
 
+function APII_ContentBlockDataManagerMixin:AddTableBlock(text, tableContent, index, isLast)
+	local block = self:AddBasicBlock(text);
+	block.template = "APII_TextBlockTableTemplate";
+	block.tableContent = tableContent;
+	block.index = index;
+	block.leftPadding = LEFT_PADDING_INDENTED;
+	if (not isLast) then
+		block.bottomPadding = 0;
+	end
+	return block;
+end
+
+function APII_ContentBlockDataManagerMixin:AddTableDataBlock(tableData)
+	local block = self:AddBasicBlock();
+	block.template = "APII_TextBlockTableTemplate";
+	block.tableData = tableData;
+	block.leftPadding = LEFT_PADDING_INDENTED;
+	return block;
+end
+
 function APII_ContentBlockDataManagerMixin:AddFunctionArguments(label, argumentTable)
 	if (argumentTable and #argumentTable > 0) then
 		self:AddTitleBlock(label);
 
+		local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
+		local hasNote = false
+		local variableStride = 0;
 		for i, argumentInfo in ipairs(argumentTable) do
-			if (argumentInfo:GetStrideIndex() == 1) then
-				local strideLine = "(Variable arguments)";
-				self:AddFieldBlock(strideLine);
-			end
-			local text = ("%d. %s"):format(i, CreateFieldString(argumentInfo));
-			self:AddFieldBlock(text, i == #argumentTable);
+			local stride = argumentInfo:GetStrideIndex();
+			variableStride = stride or variableStride;
+			hasNote = hasNote or argumentInfo.documentation ~= nil;
+			AddFieldRowToTableData(tableData, i, argumentInfo);
 		end
+
+		if (variableStride > 0) then
+			tableData:StartRow();
+			tableData:SetRowStride(variableStride);
+			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode("..."));
+			local strideText = "Variable repeat of the last row";
+			if (variableStride > 1) then
+				strideText = string.format("Variable repeat of the last %d rows", variableStride);
+			end
+			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode(strideText));
+		end
+
+		tableData:StartRow(true);
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Param"));
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
+		if (hasNote) then
+			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
+		end
+		self:AddTableDataBlock(tableData);
 	end
 end
 
-
-local APII_FrameFactory = CreateFrameFactory();
 
 APII_ContentBlockManagerMixin = {};
 
@@ -2498,7 +2909,7 @@ function APII_CoreMixin:OnLoad()
 				return keyMatched and (valueType == "number" or valueType == "boolean");
 			end
 
-			if (valueType == "table" and value.IsForbidden and value:IsForbidden()) then return false; end
+			if (valueType == "table" and type(value.IsForbidden) == "function" and value:IsForbidden()) then return false; end
 
 			if (searchType == GlobalSearchTypes.Tables) then
 				return keyMatched and valueType == "table" and value.GetDebugName == nil;
