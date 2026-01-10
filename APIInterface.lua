@@ -888,6 +888,24 @@ end
 SlashCmdList["APIISLASH"] = slashcmd
 
 
+local activeSize = 1;
+
+local fontTest = {
+	[1] = {
+		["normal"] = "GameFontHighlight";
+		["big"] = "GameFontHighlightMedium";
+	};
+	[2] = {
+		["normal"] = "GameFontHighlightMedium";
+		["big"] = "GameFontHighlightLarge";
+	};
+}
+
+local function GetFont(size)
+	return fontTest[activeSize][size];
+end
+
+
 local APII_StringTesterMixin = {};
 
 function APII_StringTesterMixin:Init()
@@ -895,7 +913,10 @@ function APII_StringTesterMixin:Init()
 	self.fontString = self.frame:CreateFontString(nil, nil, "GameFontHighlight");
 end
 
-function APII_StringTesterMixin:TestUnboundWidth(text)
+function APII_StringTesterMixin:TestUnboundWidth(text, textSize)
+	textSize = textSize or "normal";
+	local font = GetFont(textSize);
+	self.fontString:SetFontObject(font);
 	self.fontString:SetText(text);
 	return self.fontString:GetUnboundedStringWidth();
 end
@@ -1420,24 +1441,6 @@ end
 
 
 
-local activeSize = 1;
-
-local fontTest = {
-	[1] = {
-		["normal"] = "GameFontHighlight";
-		["big"] = "GameFontHighlightMedium";
-	};
-	[2] = {
-		["normal"] = "GameFontHighlightMedium";
-		["big"] = "GameFontHighlightLarge";
-	};
-}
-
-local function GetFont(size)
-	return fontTest[activeSize][size];
-end
-
-
 APII_TextAreaMixin = {};
 
 function APII_TextAreaMixin:GetEditBox()
@@ -1534,12 +1537,69 @@ function APII_TextAreaMixin:SetText(text, font)
 end
 
 
+APII_TableTextAreaMixin = CreateFromMixins(APII_TextAreaMixin)
+
+function APII_TableTextAreaMixin:GetBackground()
+	return self.Background;
+end
+
+function APII_TableTextAreaMixin:SetBackgroundColor(color)
+	if (not color or not color.GetRGBA) then return; end
+	local background = self:GetBackground();
+	background:SetColorTexture(color:GetRGBA());
+end
+
+function APII_TableTextAreaMixin:GetPadding()
+	return self.leftPadding or 0,
+		self.rightPadding or 0,
+		self.topPadding or 0,
+		self.bottomPadding or 0;
+end
+
+function APII_TableTextAreaMixin:SetPadding(left, right, top, bottom)
+	self.leftPadding = left or 0;
+	self.rightPadding = right or 0;
+	self.topPadding = top or 0;
+	self.bottomPadding = bottom or 0;
+	self:UpdateTextArea();
+end
+
+function APII_TableTextAreaMixin:SetAvailableWidth(width)
+	self:SetWidth(width);
+	self:UpdateTextArea();
+end
+
+function APII_TableTextAreaMixin:UpdateTextArea()
+	local editBox = self:GetEditBox();
+	local html = self:GetHtml();
+	local fonsString = self:GetFontString();
+	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
+	local width = self:GetWidth() - leftPadding - rightPadding;
+	editBox:SetWidth(width);
+	html:SetWidth(width);
+	fonsString:SetWidth(width);
+
+	editBox:SetPoint("TOPLEFT", leftPadding, -topPadding);
+	editBox:SetPoint("BOTTOM", 0, bottomPadding);
+	html:SetPoint("TOPLEFT", leftPadding, -topPadding);
+	html:SetPoint("BOTTOM", 0, bottomPadding);
+	fonsString:SetPoint("TOPLEFT", leftPadding, -topPadding);
+
+	editBox:SetHitRectInsets(-leftPadding, -rightPadding, -topPadding, -bottomPadding);
+end
+
+function APII_TableTextAreaMixin:SetText(text, font)
+	APII_TextAreaMixin.SetText(self, text, font);
+	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
+	local height = self:GetHeight() + topPadding + bottomPadding;
+	self:SetHeight(height);
+end
+
+
 APII_TextBlockMixin = {};
 
 function APII_TextBlockMixin:OnLoad()
-	-- self.Html:SetIndentedWordWrap("p", true);
-	-- self.EditBox:SetIndentedWordWrap(true);
-	-- self.Text:SetIndentedWordWrap(true);
+
 end
 
 function APII_TextBlockMixin:OnHyperlinkClick(...)
@@ -1606,15 +1666,14 @@ function APII_TextBlockCopyStringMixin:Initialize(blockData)
 end
 
 
-
 APII_TextBlockTableMixin = CreateFromMixins(APII_TextBlockMixin);
 
-local TABLE_SPACING = 8;
-local TABLE_BORDER_SIZE = 5;
+local TABLE_SPACING_HORIZONTAL = 8;
+local TABLE_SPACING_VERTICAL = 6;
+local TABLE_SEPARATOR_WIDTH = 2;
 
 function APII_TextBlockTableMixin:OnLoad()
 	APII_TextBlockMixin.OnLoad(self);
-	self.StrideTexture:SetColorTexture(APII_VARIABLE_FIELD_COLOR:GetRGB());
 	self.textAreas = {};
 	self.separators = {};
 end
@@ -1650,164 +1709,145 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
 	local width = self:GetWidth() - leftPadding - rightPadding;
 
-	local rowWidths = {};
+	local columnWidthData = {};
 	for rowIndex, row in ipairs(blockData.tableData.tableData) do
-		--print("header:", row.isHeader);
 		for contentIndex, content in ipairs(row.content) do
-			if (not rowWidths[contentIndex] or rowWidths[contentIndex] < content.width) then
-				rowWidths[contentIndex] = content.width;
+			local contentWidth = content.width;
+			local widthData = columnWidthData[contentIndex];
+			if (not widthData) then
+				widthData = {
+					contentWidth = 0;
+					leftSpacing = TABLE_SPACING_HORIZONTAL;
+					rightSpacing = TABLE_SPACING_HORIZONTAL;
+					topSpacing = TABLE_SPACING_VERTICAL;
+					bottomSpacing = TABLE_SPACING_VERTICAL;
+				}
+				columnWidthData[contentIndex] = widthData;
 			end
-			--print(content.text);
+
+			widthData.preventScale = widthData.preventScale or content.preventScale;
+			if (not content.colSpan and widthData.contentWidth < contentWidth) then
+				widthData.contentWidth = contentWidth;
+			end
 		end
 	end
 
+	local totalColumnWidth = 0
+	local availableTextSpace = width - TABLE_SEPARATOR_WIDTH * (#columnWidthData - 1);
+	local scalableSpace = availableTextSpace;
+	local contentToScale = {};
+	for k, data in ipairs(columnWidthData) do
+		local contentWidth = data.contentWidth + data.leftSpacing + data.rightSpacing;
+		totalColumnWidth = totalColumnWidth + contentWidth;
+		tinsert(contentToScale, k);
+	end
+
+	local needsScaling = totalColumnWidth > availableTextSpace;
+	if (#contentToScale > 0) then
+		local hadSmallerThanScale = true;
+		while hadSmallerThanScale do
+			hadSmallerThanScale = false;
+			local minColPerc = 1 / #contentToScale;
+			local smallestScaleSize = minColPerc * scalableSpace;
+			local beforeCount = #contentToScale;
+			for k, columnIndex in ipairs(contentToScale) do
+				local data = columnWidthData[columnIndex];
+				local contentWidth = data.contentWidth + data.leftSpacing + data.rightSpacing;
+				if (contentWidth < smallestScaleSize) then
+					hadSmallerThanScale = true;
+					data.finalWidth = contentWidth;
+					scalableSpace = scalableSpace - contentWidth;
+					tremove(contentToScale, k);
+				end
+			end
+
+			if (#contentToScale == 0) then
+				-- Everything fit;
+				break;
+			end
+
+			if (beforeCount == #contentToScale) then
+				for k, columnIndex in ipairs(contentToScale) do
+					local data = columnWidthData[columnIndex];
+					data.finalWidth = smallestScaleSize;
+					scalableSpace = scalableSpace - smallestScaleSize;
+				end
+				break;
+			end
+		end
+	end
+
+	-- Add any left over space to the last column to all tables are full width
+	-- if (scalableSpace > 0) then
+	-- 	local lastColumnData = columnWidthData[#columnWidthData];
+	-- 	lastColumnData.finalWidth = lastColumnData.finalWidth + scalableSpace;
+	-- end
+	
 	local xOffset = 0;
-	local yOffset = 0;
-	local rowSeparators = {};
+	local yOffset = topPadding;
+	local rowFrames = {};
 	for rowIndex, row in ipairs(blockData.tableData.tableData) do
-		xOffset = TABLE_BORDER_SIZE;
-		yOffset = yOffset + TABLE_BORDER_SIZE;
+		xOffset = leftPadding;
+		yOffset = yOffset;
 		local rowHeight = 0
-		for columnIndex, content in ipairs(row.content) do
+		local rowColor = TABLE_HEADER_COLOR;
+		if (not row.isHeader) then
+			rowColor = rowIndex % 2 == 1 and TABLE_ALTERNATE_DARK_COLOR or TABLE_ALTERNATE_LIGHT_COLOR;
+		end
+
+		local columnIndex = 1;
+		local lastIndex = 0;
+		while columnIndex <= #columnWidthData do
+			local columnData = columnWidthData[columnIndex];
 			if (columnIndex > 1) then
 				local separator = APII_FrameFactory:Create(self, "APII_TableSeparatorTemplate");
 				separator:SetParent(self);
 				separator:Show();
-				separator:SetPoint("TOPLEFT", xOffset + leftPadding, -yOffset -topPadding);
+				separator:SetWidth(TABLE_SEPARATOR_WIDTH);
+				separator:SetPoint("TOPLEFT", xOffset, -yOffset);
 				tinsert(self.separators, separator);
-				tinsert(rowSeparators, separator);
-				xOffset = xOffset + separator:GetWidth() + TABLE_SPACING;
+				tinsert(rowFrames, separator);
+				xOffset = xOffset + TABLE_SEPARATOR_WIDTH;
 			end
 
-			local columnWidth = rowWidths[columnIndex];
-			local textArea = APII_FrameFactory:Create(self, "APII_TableTextAreaTemplate");
-			local availableSpace = width - xOffset - TABLE_BORDER_SIZE;
-			if (columnIndex == #row.content) then
-				columnWidth = availableSpace;
-			else
-				columnWidth = min(availableSpace, columnWidth);
+			local content = row.content[columnIndex];
+			local columnWidth = columnData.finalWidth;
+			if (content and content.colSpan and content.colSpan > 1) then
+				for i = 1, content.colSpan - 1, 1 do
+					columnIndex = columnIndex + 1;
+					local col = columnWidthData[columnIndex];
+					if (not col) then break; end
+					columnWidth = columnWidth + TABLE_SEPARATOR_WIDTH + col.finalWidth;
+				end
 			end
+
+			local textArea = APII_FrameFactory:Create(self, "APII_TableTextAreaTemplate");
 			textArea:SetParent(self);
 			textArea:Show();
-			textArea:SetPoint("TOPLEFT", xOffset + leftPadding, -yOffset - topPadding);
+			textArea:SetPoint("TOPLEFT", xOffset, -yOffset);
 			textArea:SetAvailableWidth(columnWidth);
-			textArea:SetText(content.text, blockData.font);
+			textArea:SetPadding(columnData.leftSpacing, columnData.rightSpacing, columnData.topSpacing, columnData.bottomSpacing);
+			local text = content and content.text or "";
+			textArea:SetText(text, blockData.font);
+			textArea:SetBackgroundColor(rowColor);
 			tinsert(self.textAreas, textArea);
+			tinsert(rowFrames, textArea);
 			local areaHeight = textArea:GetHeight();
-			rowHeight = areaHeight > rowHeight and areaHeight or rowHeight;
-			xOffset = xOffset + columnWidth + TABLE_SPACING;
+			rowHeight = max(rowHeight, areaHeight);
+			xOffset = xOffset + columnWidth;
+
+			columnIndex = columnIndex + 1;
 		end
 
-		for k, separator in ipairs(rowSeparators) do
-			separator:SetHeight(rowHeight + TABLE_BORDER_SIZE * 2);
+		for k, frame in ipairs(rowFrames) do
+			frame:SetHeight(rowHeight);
 		end
-		wipe(rowSeparators);
+		wipe(rowFrames);
 
-		yOffset = yOffset + rowHeight + TABLE_BORDER_SIZE;
+		yOffset = yOffset + rowHeight;
 	end
 
 	self:SetHeight(yOffset + topPadding + bottomPadding);
-
-	if true then return end
-
-	local basicString = blockData.textString;
-	
-	
-	local textAreaWidth = width - TABLE_BORDER_SIZE * 2;
-
-	
-
-	local rowContent = blockData.tableContent.content;
-	local columnWidths = blockData.tableContent.columnWidths;
-
-	local totalContentSize = 0;
-	for k, column in ipairs(rowContent) do
-		totalContentSize = totalContentSize + column.width;
-	end
-
-	local templateInfo = C_XMLUtil.GetTemplateInfo("APII_TableSeparatorTemplate");
-	local textSpace = textAreaWidth - (#rowContent-1) * (TABLE_SPACING + templateInfo.width);
-	print(textAreaWidth, "->", textSpace);
-	print(totalContentSize, textSpace, string.format("%.2f",( totalContentSize / textSpace) * 100))
-
-	for k, column in ipairs(rowContent) do
-		print(k, string.format("%.2f",( column.width / totalContentSize) *100));
-	end
-
-
-	local contentHeight = 0;
-	local xOffset = TABLE_BORDER_SIZE;
-	
-	local totalContentwidth = 0;
-	for k, column in ipairs(rowContent) do
-		if (#self.textAreas > 0) then
-			local separator = APII_FrameFactory:Create(self, "APII_TableSeparatorTemplate");
-			separator:SetParent(self);
-			separator:Show();
-			separator:SetPoint("TOPLEFT", xOffset + leftPadding, -topPadding);
-			tinsert(self.separators, separator);
-			xOffset = xOffset + separator:GetWidth()+ TABLE_SPACING;
-		end
-
-		local columnWidth = column.width;
-		--print(k, v, columnWidth);
-		local textArea = APII_FrameFactory:Create(self, "APII_TableTextAreaTemplate");
-		local availableSpace = width - xOffset - TABLE_BORDER_SIZE;
-		if (k == #rowContent) then
-			columnWidth = availableSpace;
-		else
-			columnWidth = min(availableSpace, columnWidth);
-		end
-		totalContentwidth = totalContentwidth + columnWidth;
-		textArea:SetParent(self);
-		textArea:Show();
-		textArea:SetPoint("TOPLEFT", xOffset + leftPadding, -topPadding - TABLE_BORDER_SIZE);
-		textArea:SetAvailableWidth(columnWidth);
-		textArea:SetText(column.text, blockData.font);
-		tinsert(self.textAreas, textArea);
-		
-		contentHeight = textArea:GetHeight();
-		xOffset = xOffset + columnWidth + TABLE_SPACING;
-		-- for cK, cV in ipairs(v.columnContent) do
-			
-		-- end
-
-		-- if (not minWidths[k]) then
-		-- 	minWidths[k] = 0;
-		-- end
-
-		-- local stringWidth = StringTester:TestUnboundWidth(v);
-		-- if (stringWidth > minWidths[k]) then
-		-- 	minWidths[k] = stringWidth;
-		-- end
-		-- print(k, v, stringWidth);
-	end
-
-	for k, separator in ipairs(self.separators) do
-		separator:SetHeight(contentHeight + TABLE_BORDER_SIZE * 2);
-	end
-	
-
-	local textArea = self:GetTextArea()
-	textArea:SetPoint("TOPLEFT", leftPadding + TABLE_BORDER_SIZE, -topPadding - TABLE_BORDER_SIZE);
-	textArea:SetAvailableWidth(textAreaWidth);
-	textArea:SetText(basicString, blockData.font);
-
-	self.Background:SetPoint("TOPLEFT", leftPadding, -topPadding);
-	self.Background:SetWidth(width);
-	self.Background:SetHeight(contentHeight + TABLE_BORDER_SIZE * 2);
-	local alternateColor = TABLE_HEADER_COLOR;
-	if (not blockData.tableContent.info.isHeader) then
-		alternateColor = blockData.index % 2 == 1 and TABLE_ALTERNATE_DARK_COLOR or TABLE_ALTERNATE_LIGHT_COLOR;
-	end
-	self.Background:SetColorTexture(alternateColor:GetRGBA());
-
-	local stride = blockData.tableContent.info.stride or 0;
-	self.StrideTexture:SetShown(stride > 0);
-	--self.Background:SetShown(blockData.index % 2 == 0);
-
-	local totalHeight = contentHeight + topPadding + bottomPadding + TABLE_BORDER_SIZE * 2;
-	self:SetHeight(totalHeight);
 end
 
 
@@ -1857,6 +1897,12 @@ local function CreateFieldString(field)
 	return text;
 end
 
+
+local APII_TableContstants = {
+	IsHeader = true;
+	PreventScaling = true;
+}
+
 local APII_TableContentMixin = {};
 do
 	local function CreateRowTable(isHeader)
@@ -1877,7 +1923,7 @@ do
 		tinsert(self.tableData, isHeader and 1 or (#self.tableData + 1), self.currentRow);
 	end
 
-	function APII_TableContentMixin:AddRowText(text, minWidth)
+	function APII_TableContentMixin:AddRowText(text, colSpan, preventScale)
 		if (not self.currentRow) then
 			self:StartRow();
 		end
@@ -1886,7 +1932,8 @@ do
 		local entry = {
 			text = text;
 			width = stringWidth;
-			minWidth = minWidth or 0;
+			colSpan = colSpan;
+			preventScale = preventScale;
 		};
 		tinsert(self.currentRow.content, entry);
 	end
@@ -1905,6 +1952,7 @@ local RIGHT_PADDING_DEFAULT = 40;
 local BOTTOM_PADDING_DEFAULT = 14;
 local BOTTOM_PADDING_NEWLINE = 4;
 local BOTTOM_PADDING_TITLE = 6;
+
 
 
 local function AddFieldRowToTableData(tableData, index, field)
@@ -1993,11 +2041,11 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 					end
 				end
 
-				tableData:StartRow(true);
-				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
+				tableData:StartRow(APII_TableContstants.IsHeader);
+				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"), nil, APII_TableContstants.PreventScaling);
 				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
 				if (hasNote) then
-					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"), 200);
+					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
 				end
 				self:AddTableDataBlock(tableData);
 			else
@@ -2010,7 +2058,7 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 					hasNote = hasNote or fieldInfo.Documentation ~= nil;
 				end
 
-				tableData:StartRow(true);
+				tableData:StartRow(APII_TableContstants.IsHeader);
 				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
 				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
 				if (hasNote) then
@@ -2032,9 +2080,9 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 				tableData:AddRowText(valueInfo:GetLuaType());
 			end
 
-			tableData:StartRow(true);
+			tableData:StartRow(APII_TableContstants.IsHeader);
 			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
-			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
+			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"), nil, APII_TableContstants.PreventScaling);
 			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"), 200);
 			self:AddTableDataBlock(tableData);
 		end
@@ -2049,8 +2097,8 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 			hasNote = hasNote or payloadInfo.Documentation ~= nil;
 		end
 
-		tableData:StartRow(true);
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
+		tableData:StartRow(APII_TableContstants.IsHeader);
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"), nil, APII_TableContstants.PreventScaling);
 		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
 		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
 		if (hasNote) then
@@ -2153,7 +2201,7 @@ function APII_ContentBlockDataManagerMixin:AddFunctionArguments(label, argumentT
 		for i, argumentInfo in ipairs(argumentTable) do
 			local stride = argumentInfo:GetStrideIndex();
 			variableStride = stride or variableStride;
-			hasNote = hasNote or argumentInfo.documentation ~= nil;
+			hasNote = hasNote or argumentInfo.Documentation ~= nil;
 			AddFieldRowToTableData(tableData, i, argumentInfo);
 		end
 
@@ -2161,15 +2209,15 @@ function APII_ContentBlockDataManagerMixin:AddFunctionArguments(label, argumentT
 			tableData:StartRow();
 			tableData:SetRowStride(variableStride);
 			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode("..."));
-			local strideText = "Variable repeat of the last row";
+			local strideText = "Variable repeats of the last row";
 			if (variableStride > 1) then
-				strideText = string.format("Variable repeat of the last %d rows", variableStride);
+				strideText = string.format("Variable repeats of the last %d rows", variableStride);
 			end
-			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode(strideText));
+			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode(strideText), 5);
 		end
 
-		tableData:StartRow(true);
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
+		tableData:StartRow(APII_TableContstants.IsHeader);
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"), nil, APII_TableContstants.PreventScaling);
 		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Param"));
 		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
 		if (hasNote) then
@@ -2371,14 +2419,6 @@ function APII_CoreMixin:GetHighlightToggleButton()
 end
 
 function APII_CoreMixin:OnSizeChanged()
-	local newWidth = self:GetWidth();
-	--print(newWidth);
-	-- if (not self.oldWidth or not ApproximatelyEqual(self.oldWidth, newWidth, 2)) then
-	-- 	print("- - New Width");
-	-- 	self.oldWidth = newWidth;
-	-- end
-
-	--self:UpdateSystemContent();
 end
 
 function APII_CoreMixin:OnDragStop()
@@ -2592,7 +2632,6 @@ function APII_CoreMixin:StepHistory(delta)
 		contentScroll:ScrollToElementData(snapshot.changedAPI);
 	end
 
-	--print(delta, self.historyIndex, snapshot.openSystem and snapshot.openSystem.Name);
 	self:UpdateHistoryButtons();
 	self.loadingHistory = false;
 end
