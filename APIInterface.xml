@@ -537,18 +537,6 @@
 		</Layers>
 	</Frame>
 
-	<Frame name="APII_TableSeparatorTemplate" virtual="true">
-		<Size x="2"/>
-
-		<Layers>
-			<Layer level="ARTWORK">
-				<Texture parentKey="Background" setAllPoints="true" alpha="0.35" >
-					<Color r="0.0" g="0.0" b="0.0"/>
-				</Texture>
-			</Layer>
-		</Layers>
-	</Frame>
-
 	<Frame name="APII_TextBlockTemplate" mixin="APII_TextBlockMixin" virtual="true">
 		<Frames>
 			<Frame parentKey="TextArea" inherits="APII_TextAreaTemplate">
@@ -591,33 +579,18 @@
 			</Frame>
 		</Frames>
 
-		<!-- <Layers>
-			<Layer level="BACKGROUND">
-				<Texture parentKey="Background" setAllPoints="true" alpha="1" >
-					<Anchors>
-						<Anchor point="TOPLEFT"/>
-					</Anchors>
-					<Color r="0.3" g="0.3" b="0.3"/>
-				</Texture>
-			</Layer>
-
-			<Layer level="BACKGROUND" textureSubLevel="1">
-				<Texture parentKey="BackgroundInset" setAllPoints="true" alpha="1">
-					<Anchors>
-						<Anchor point="TOPLEFT" relativeKey="$parent.Background" x="1" y="-1"/>
-						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.Background" x="-1" y="1"/>
-					</Anchors>
-					<Color r="0.07" g="0.07" b="0.07"/>
-				</Texture>
-			</Layer>
-		</Layers> -->
-
 		<Scripts>
 			<OnLoad method="OnLoad"/>
 		</Scripts>
 	</Frame>
 
 	<Frame name="APII_TextBlockTableTemplate" mixin="APII_TextBlockTableMixin" virtual="true">
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Background"/>
+			</Layer>
+		</Layers>
+
 		<Scripts>
 			<OnLoad method="OnLoad"/>
 		</Scripts>
@@ -646,25 +619,6 @@
 				</KeyValues>
 				<Layers>
 					<Layer level="BACKGROUND">
-
-						<!-- <Texture alpha="0.5">
-							<Anchors>
-								<Anchor point="TOPLEFT"/>
-								<Anchor point="BOTTOMRIGHT"/>
-							</Anchors>
-							<Color r="0.2" g="0.0" b="0.0" />
-						</Texture> -->
-
-						<!-- <Texture parentKey="BGLeft" atlas="Options_ListExpand_Left" useAtlasSize="true">
-							<Anchors>
-								<Anchor point="LEFT" x="0" y="0" />
-							</Anchors>
-						</Texture>
-						<Texture parentKey="BGRight" atlas="Options_ListExpand_Right" useAtlasSize="true">
-							<Anchors>
-								<Anchor point="RIGHT" x="-0" y="0" />
-							</Anchors>
-						</Texture> -->
 						<Texture parentKey="BGLeft" atlas="Options_ListExpand_Left" alpha="0.8">
 							<Size x="12"/>
 							<Anchors>
@@ -783,7 +737,7 @@
 	</EditBox>
 
 	<Frame name="APII_Frame" inherits="PortraitFrameTemplate" mixin="APII_CoreMixin" movable="true" resizable="true" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
-		<Size x="600" y="450"/>
+		<Size x="800" y="500"/>
 		<Anchors>
 			<Anchor point="CENTER" x="0" y="0"/>
 		</Anchors>

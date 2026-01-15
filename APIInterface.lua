@@ -3,13 +3,15 @@ local _addonName, _addon = ...;
 
 APII = LibStub("AceAddon-3.0"):NewAddon(_addonName);
 
+local MIN_FRAME_WIDTH = 800;
+local MIN_FRAME_HEIGHT = 500;
 local HISTORY_MAX = 50;
 local LISTITEM_HEIGHT = 34;
 local LISTITEM_EXPAND_MARGIN = 52;
 local SEARCH_CUTOFF_AMOUNT = 1000;
 local TEXT_IMPUT_SEARCH_DELAY = 0.3;
 local FORMAT_SEARCH_CUTOFF_CHANGED = "Search cutoff changed to %d for this session.";
-local FORMAT_SEARCH_CUTOFF = "Searched stopped after %d results."
+local FORMAT_SEARCH_CUTOFF = "Searched stopped after %d results. Use /apii limit x if to change the limit."
 local FORMAT_NO_RESULTS = "No \"%s\" found in _G matching \"%s\"."
 local FORMAT_RESULTS_TITLE = "%d \"%s\" matching \"%s\"";
 local FORMAT_IN_SYSTEMS = "In system: %s";
@@ -22,7 +24,25 @@ local TOOLTIP_GLOBAL_STRING2 = "Hold control: search only in value.";
 local TOOLTIP_UNDOCUMENTED = "Include undocumented system functions in systems and search.";
 local TOOLTIP_UNDOCUMENTED_WARNING = "Enabling this will cause increase memory usage.";
 local ERROR_COMBAT = "Can't open %s during combat. The frame will open once you leave combat.";
-
+local VARIABLE_REPEATS = "Variable repeats of the last row";
+local VARIABLE_REPEATS_MULTIPLE = "Variable repeats of the last %d rows";
+local PART_OF_SYSTEM = "Part of the %s system";
+local PART_OF_NO_SYSTEM = "Not part of a system";
+local TT_SEARCH_FUNCTIONS = "Search functions with matching keys";
+local TT_SEARCH_TABLES = "Search tables with matching keys";
+local TT_SEARCH_FRAMES = "Search frames with matching keys";
+local TT_SEARCH_FRAMES_FORBIDDEN = "Does not include frames marked as \"Forbidden\"";
+local TT_SEARCH_STRINGS = "Search strings with matching key";
+local TT_SEARCH_STRINGS_VALUE = "<Control Click to match value>";
+local TT_SEARCH_STRINGS_BOTH = "<Shift Click to match either key or value>";
+local TT_SEARCH_VALUES = "Search values with matching keys";
+local HISTORY_BACKWARDS = "Back In History";
+local HISTORY_BACKWARDS_TT = "<Hold Shift to go to the very end>";
+local HISTORY_FORWARDS = "Forward In History";
+local HISTORY_FORWARDS_TT = "<Hold Shift to go to the very front>";
+local TOGGLE_HYPERLINKS = "Toggle Hyperlinks";
+local TOGGLE_HYPERLINKS_TT = "Make API text clickable to hyperlink to other API.";
+local TOGGLE_HYPERLINKS_TT_SHIFT = "<Hold Shift to temporary enable hyperlinks>";
 
 local DETAILS_NO_PUBLIC = "This function does nothing in public clients";
 local DETAILS_NO_PUBLIC_REPLACE = "|cffff0000This function does nothing in public clients|r";
@@ -859,7 +879,7 @@ SLASH_APIISLASH1 = '/apii';
 SLASH_APIISLASH2 = '/apiinterface';
 local function slashcmd(msg, editbox)
 	if (msg == "reset") then
-		APII:ResetFrame();
+		APII_Frame:Reset();
 	elseif msg:match("^limit ") then
 		local amount = tonumber(msg:match("limit (%d+)"));
 		if (not amount or amount < 1) then return; end
@@ -937,7 +957,6 @@ local DOCUMENTATION_TO_COLOR_RED = {
 	["Unavailable in public builds"] = true;
 	[APII_UNDOCUMENTED_MESSAGE] = true;
 }
-
 
 local APII_COMMENT_COLOR = LIGHTGRAY_FONT_COLOR;
 local APII_SYSTEM_SOURCE_COLOR = LIGHTGRAY_FONT_COLOR;
@@ -1049,7 +1068,6 @@ function APII_EditBoxMixin:OnShow()
 end
 
 local COPY_HIGHLIGHT_DURATION = 0.3;
--- local COPY_HIGHLIGHT_COLOR = CreateColor(0.2, 0.4, 0.2);
 local COPY_HIGHLIGHT_COLOR = CreateColor(0.6, 0.6, 0.2);
 
 function APII_EditBoxMixin:StartCopyHighlight()
@@ -1669,13 +1687,17 @@ end
 APII_TextBlockTableMixin = CreateFromMixins(APII_TextBlockMixin);
 
 local TABLE_SPACING_HORIZONTAL = 8;
-local TABLE_SPACING_VERTICAL = 6;
+local TABLE_SPACING_VERTICAL = 5;
 local TABLE_SEPARATOR_WIDTH = 2;
+
+local TABLE_BORDER_COLOR = CreateColor(0.0, 0.0, 0.0, 0.45);
+local TABLE_HEADER_COLOR = CreateColor(0.09, 0.09, 0.09, 1);
+local TABLE_ALTERNATE_LIGHT_COLOR = CreateColor(0.15, 0.15, 0.15, 1);
+local TABLE_ALTERNATE_DARK_COLOR = CreateColor(0.12, 0.12, 0.12, 1);
 
 function APII_TextBlockTableMixin:OnLoad()
 	APII_TextBlockMixin.OnLoad(self);
 	self.textAreas = {};
-	self.separators = {};
 end
 
 function APII_TextBlockTableMixin:SetHyperlinkingEnabled(enable)
@@ -1683,10 +1705,6 @@ function APII_TextBlockTableMixin:SetHyperlinkingEnabled(enable)
 		frame:SetHyperlinkingEnabled(enable);
 	end
 end
-
-local TABLE_HEADER_COLOR = CreateColor(0.0, 0.0, 0.0, 0.3);
-local TABLE_ALTERNATE_LIGHT_COLOR = CreateColor(0.2, 0.2, 0.2, 0.25);
-local TABLE_ALTERNATE_DARK_COLOR = CreateColor(0.05, 0.05, 0.05, 0.10);
 
 function APII_TextBlockTableMixin:Initialize(blockData)
 	self.blockData = blockData;
@@ -1696,11 +1714,6 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 	end
 	wipe(self.textAreas);
 
-	for k, frame in ipairs(self.separators) do
-		APII_FrameFactory:Release(frame);
-	end
-	wipe(self.separators);
-
 	if (not blockData.tableData) then
 		self:SetHeight(10);
 		return;
@@ -1709,18 +1722,16 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
 	local width = self:GetWidth() - leftPadding - rightPadding;
 
+	-- Gather minimum width of each column
 	local columnWidthData = {};
-	for rowIndex, row in ipairs(blockData.tableData.tableData) do
+	for rowIndex, row in ipairs(blockData.tableData.rowData) do
 		for contentIndex, content in ipairs(row.content) do
 			local contentWidth = content.width;
 			local widthData = columnWidthData[contentIndex];
 			if (not widthData) then
 				widthData = {
 					contentWidth = 0;
-					leftSpacing = TABLE_SPACING_HORIZONTAL;
-					rightSpacing = TABLE_SPACING_HORIZONTAL;
-					topSpacing = TABLE_SPACING_VERTICAL;
-					bottomSpacing = TABLE_SPACING_VERTICAL;
+					finalWidth = 0;
 				}
 				columnWidthData[contentIndex] = widthData;
 			end
@@ -1733,16 +1744,20 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 	end
 
 	local totalColumnWidth = 0
-	local availableTextSpace = width - TABLE_SEPARATOR_WIDTH * (#columnWidthData - 1);
+	local totalBorderWidth = TABLE_SEPARATOR_WIDTH * (#columnWidthData + 1);
+	local availableTextSpace = width - totalBorderWidth;
 	local scalableSpace = availableTextSpace;
 	local contentToScale = {};
 	for k, data in ipairs(columnWidthData) do
-		local contentWidth = data.contentWidth + data.leftSpacing + data.rightSpacing;
+		local contentWidth = data.contentWidth + TABLE_SPACING_HORIZONTAL * 2;
 		totalColumnWidth = totalColumnWidth + contentWidth;
 		tinsert(contentToScale, k);
 	end
 
-	local needsScaling = totalColumnWidth > availableTextSpace;
+	-- Every cell gets 1/cells of the available space
+	-- Any cell that needs less space gets their space, the left over space is made available for the remaining cells
+	-- Repeat with new available space and remaining cells
+	-- If no cells need less space than available, give remaining cells 1/cells of the available space
 	if (#contentToScale > 0) then
 		local hadSmallerThanScale = true;
 		while hadSmallerThanScale do
@@ -1752,7 +1767,7 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 			local beforeCount = #contentToScale;
 			for k, columnIndex in ipairs(contentToScale) do
 				local data = columnWidthData[columnIndex];
-				local contentWidth = data.contentWidth + data.leftSpacing + data.rightSpacing;
+				local contentWidth = data.contentWidth + TABLE_SPACING_HORIZONTAL * 2;
 				if (contentWidth < smallestScaleSize) then
 					hadSmallerThanScale = true;
 					data.finalWidth = contentWidth;
@@ -1784,10 +1799,10 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 	-- end
 	
 	local xOffset = 0;
-	local yOffset = topPadding;
+	local yOffset = topPadding + TABLE_SEPARATOR_WIDTH;
 	local rowFrames = {};
-	for rowIndex, row in ipairs(blockData.tableData.tableData) do
-		xOffset = leftPadding;
+	for rowIndex, row in ipairs(blockData.tableData.rowData) do
+		xOffset = leftPadding + TABLE_SEPARATOR_WIDTH;
 		yOffset = yOffset;
 		local rowHeight = 0
 		local rowColor = TABLE_HEADER_COLOR;
@@ -1795,18 +1810,11 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 			rowColor = rowIndex % 2 == 1 and TABLE_ALTERNATE_DARK_COLOR or TABLE_ALTERNATE_LIGHT_COLOR;
 		end
 
+		-- Doing this with a while loop so we can skip columns for colSpan
 		local columnIndex = 1;
-		local lastIndex = 0;
 		while columnIndex <= #columnWidthData do
 			local columnData = columnWidthData[columnIndex];
-			if (columnIndex > 1) then
-				local separator = APII_FrameFactory:Create(self, "APII_TableSeparatorTemplate");
-				separator:SetParent(self);
-				separator:Show();
-				separator:SetWidth(TABLE_SEPARATOR_WIDTH);
-				separator:SetPoint("TOPLEFT", xOffset, -yOffset);
-				tinsert(self.separators, separator);
-				tinsert(rowFrames, separator);
+			if (columnIndex ~= 1) then
 				xOffset = xOffset + TABLE_SEPARATOR_WIDTH;
 			end
 
@@ -1814,9 +1822,9 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 			local columnWidth = columnData.finalWidth;
 			if (content and content.colSpan and content.colSpan > 1) then
 				for i = 1, content.colSpan - 1, 1 do
-					columnIndex = columnIndex + 1;
-					local col = columnWidthData[columnIndex];
+					local col = columnWidthData[columnIndex + 1];
 					if (not col) then break; end
+					columnIndex = columnIndex + 1;
 					columnWidth = columnWidth + TABLE_SEPARATOR_WIDTH + col.finalWidth;
 				end
 			end
@@ -1826,7 +1834,7 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 			textArea:Show();
 			textArea:SetPoint("TOPLEFT", xOffset, -yOffset);
 			textArea:SetAvailableWidth(columnWidth);
-			textArea:SetPadding(columnData.leftSpacing, columnData.rightSpacing, columnData.topSpacing, columnData.bottomSpacing);
+			textArea:SetPadding(TABLE_SPACING_HORIZONTAL, TABLE_SPACING_HORIZONTAL, TABLE_SPACING_VERTICAL, TABLE_SPACING_VERTICAL);
 			local text = content and content.text or "";
 			textArea:SetText(text, blockData.font);
 			textArea:SetBackgroundColor(rowColor);
@@ -1847,7 +1855,14 @@ function APII_TextBlockTableMixin:Initialize(blockData)
 		yOffset = yOffset + rowHeight;
 	end
 
-	self:SetHeight(yOffset + topPadding + bottomPadding);
+	local totalWidth = width - scalableSpace;
+	self.Background:SetHeight(yOffset + TABLE_SEPARATOR_WIDTH);
+	self.Background:SetWidth(totalWidth);
+	self.Background:ClearAllPoints();
+	self.Background:SetPoint("TOPLEFT", leftPadding, 0);
+	self.Background:SetColorTexture(TABLE_BORDER_COLOR:GetRGBA());
+
+	self:SetHeight(yOffset + topPadding + bottomPadding + TABLE_SEPARATOR_WIDTH * 2);
 end
 
 
@@ -1874,33 +1889,8 @@ function APII_SystemButtonMixin:OnClick()
 	self:TriggerEvent(APII_SystemButtonMixin.Event.OnClick, self.data);
 end
 
-
-
-local function CreateFieldString(field)
-	local text = ("%s - %s"):format(field:GenerateAPILink(), field:GetLuaType());
-	if (field.Mixin) then
-		local mixinString = string.format(" (|Hapi:mixin:%s|h%s|h)", field.Mixin, field.Mixin);
-		text = text .. APII_MIXIN_COLOR:WrapTextInColorCode(mixinString);
-	end
-	if (field:IsOptional()) then
-		if (field.Default ~= nil) then
-			text = ("%s (default:%s)"):format(text, tostring(field.Default));
-		else
-			text = text .. APII_COMMENT_COLOR:WrapTextInColorCode(" (optional)");
-		end
-	end
-	if (field.Documentation) then
-		local documentationString = table.concat(field.Documentation, " ");
-		documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
-		text = ("%s  %s"):format(text, documentationString);
-	end
-	return text;
-end
-
-
 local APII_TableContstants = {
 	IsHeader = true;
-	PreventScaling = true;
 }
 
 local APII_TableContentMixin = {};
@@ -1914,13 +1904,13 @@ do
 	end
 
 	function APII_TableContentMixin:Init()
-		self.tableData = {};
+		self.rowData = {};
 		self.currentRow = nil;
 	end
 
 	function APII_TableContentMixin:StartRow(isHeader)
 		self.currentRow = CreateRowTable(isHeader);
-		tinsert(self.tableData, isHeader and 1 or (#self.tableData + 1), self.currentRow);
+		tinsert(self.rowData, isHeader and 1 or (#self.rowData + 1), self.currentRow);
 	end
 
 	function APII_TableContentMixin:AddRowText(text, colSpan, preventScale)
@@ -1953,11 +1943,9 @@ local BOTTOM_PADDING_DEFAULT = 14;
 local BOTTOM_PADDING_NEWLINE = 4;
 local BOTTOM_PADDING_TITLE = 6;
 
-
-
 local function AddFieldRowToTableData(tableData, index, field)
 	tableData:StartRow();
-	
+
 	if (index) then
 		tableData:AddRowText(index..".");
 	end
@@ -1997,9 +1985,9 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 	local isConstant = apiInfo.Type == "Constants";
 
 	do
-		local text = "Not part of a system";
+		local text = PART_OF_NO_SYSTEM;
 		if (apiInfo.System and not apiInfo.System.isFake) then
-			text = string.format("Part of the %s system", apiInfo.System:GenerateAPILink());
+			text = string.format(PART_OF_SYSTEM, apiInfo.System:GenerateAPILink());
 		end
 		self:AddBasicBlock(APII_SYSTEM_SOURCE_COLOR:WrapTextInColorCode(text));
 	end
@@ -2042,7 +2030,7 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 				end
 
 				tableData:StartRow(APII_TableContstants.IsHeader);
-				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"), nil, APII_TableContstants.PreventScaling);
+				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
 				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
 				if (hasNote) then
 					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
@@ -2062,7 +2050,7 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
 				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
 				if (hasNote) then
-					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"), 200);
+					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
 				end
 				self:AddTableDataBlock(tableData);
 			end
@@ -2082,8 +2070,8 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 
 			tableData:StartRow(APII_TableContstants.IsHeader);
 			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
-			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"), nil, APII_TableContstants.PreventScaling);
-			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"), 200);
+			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
+			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
 			self:AddTableDataBlock(tableData);
 		end
 
@@ -2098,7 +2086,7 @@ function APII_ContentBlockDataManagerMixin:Init(apiInfo)
 		end
 
 		tableData:StartRow(APII_TableContstants.IsHeader);
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"), nil, APII_TableContstants.PreventScaling);
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
 		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
 		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
 		if (hasNote) then
@@ -2192,39 +2180,38 @@ function APII_ContentBlockDataManagerMixin:AddTableDataBlock(tableData)
 end
 
 function APII_ContentBlockDataManagerMixin:AddFunctionArguments(label, argumentTable)
-	if (argumentTable and #argumentTable > 0) then
-		self:AddTitleBlock(label);
+	if (not argumentTable or #argumentTable == 0) then return; end
+	self:AddTitleBlock(label);
 
-		local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-		local hasNote = false
-		local variableStride = 0;
-		for i, argumentInfo in ipairs(argumentTable) do
-			local stride = argumentInfo:GetStrideIndex();
-			variableStride = stride or variableStride;
-			hasNote = hasNote or argumentInfo.Documentation ~= nil;
-			AddFieldRowToTableData(tableData, i, argumentInfo);
-		end
-
-		if (variableStride > 0) then
-			tableData:StartRow();
-			tableData:SetRowStride(variableStride);
-			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode("..."));
-			local strideText = "Variable repeats of the last row";
-			if (variableStride > 1) then
-				strideText = string.format("Variable repeats of the last %d rows", variableStride);
-			end
-			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode(strideText), 5);
-		end
-
-		tableData:StartRow(APII_TableContstants.IsHeader);
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"), nil, APII_TableContstants.PreventScaling);
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Param"));
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
-		if (hasNote) then
-			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
-		end
-		self:AddTableDataBlock(tableData);
+	local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
+	local hasNote = false
+	local variableStride = 0;
+	for i, argumentInfo in ipairs(argumentTable) do
+		local stride = argumentInfo:GetStrideIndex();
+		variableStride = stride or variableStride;
+		hasNote = hasNote or argumentInfo.Documentation ~= nil;
+		AddFieldRowToTableData(tableData, i, argumentInfo);
 	end
+
+	if (variableStride > 0) then
+		tableData:StartRow();
+		tableData:SetRowStride(variableStride);
+		tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode("..."));
+		local strideText = VARIABLE_REPEATS;
+		if (variableStride > 1) then
+			strideText = string.format(VARIABLE_REPEATS_MULTIPLE, variableStride);
+		end
+		tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode(strideText), 5);
+	end
+
+	tableData:StartRow(APII_TableContstants.IsHeader);
+	tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
+	tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Param"));
+	tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
+	if (hasNote) then
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
+	end
+	self:AddTableDataBlock(tableData);
 end
 
 
@@ -2464,10 +2451,8 @@ do
 				if (#generalSearchText == 0) then
 					tremove(core.history, core.historyIndex);
 					core.historyIndex = core.historyIndex - 1;
-					dprint("removed GeneralSearch")
 				else
 					previousHistory.generalSearch = generalSearchText;
-					dprint("changed GeneralSearch", generalSearchText);
 				end
 				return true;
 			end
@@ -2480,10 +2465,8 @@ do
 				if (#systemSearchText == 0) then
 					tremove(core.history, core.historyIndex);
 					core.historyIndex = core.historyIndex - 1;
-					dprint("removed SystemSearch")
 				else
 					previousHistory.systemSearch = systemSearchText;
-					dprint("changed SystemSearch", systemSearchText);
 				end
 				return;
 			end
@@ -2496,10 +2479,8 @@ do
 				if (#contentSearchText == 0) then
 					tremove(core.history, core.historyIndex);
 					core.historyIndex = core.historyIndex - 1;
-					dprint("removed ContentSearch")
 				else
 					previousHistory.contentSearch = contentSearchText;
-					dprint("changed ContentSearch", contentSearchText);
 				end
 				return true;
 			end
@@ -2546,7 +2527,6 @@ do
 				if (previousHistory.generalSearch == generalSearchText) then
 					tremove(core.history, core.historyIndex);
 					core.historyIndex = core.historyIndex - 1;
-					dprint("removed GlobalSearch");
 				end
 			end
 			return false;
@@ -2589,8 +2569,6 @@ do
 			dprint("Added history", #self.history, reason);
 		end
 		self:UpdateHistoryButtons();
-
-		
 	end
 end
 
@@ -2647,7 +2625,7 @@ local function OnGeneralSearchChanged(coreFrame)
 
 	APII.openedSystem = nil;
 	coreFrame:UpdateSystemsList();
-	coreFrame:UpdateSystemContent(true);
+	coreFrame:UpdateSystemContent(ScrollBoxConstants.DiscardScrollPosition);
 
 	coreFrame:AddHistory(APII_HistoryReason.GeneralSearch);
 end
@@ -2674,7 +2652,6 @@ function APII_CoreMixin:OnLoad()
 	self.historyIndex = 0;
 	self:UpdateHistoryButtons();
 	self:UpdateGlobalSearchDropdown();
-	--self:AddHistory();
 
 	ButtonFrameTemplate_HidePortrait(self)
 	self:SetClampedToScreen(true);
@@ -2684,7 +2661,6 @@ function APII_CoreMixin:OnLoad()
 	self.Bg:SetPoint("BOTTOMRIGHT", self, -2, 3);
 
 	local generalSearch = self:GetGeneralSearch();
-	
 
 	do
 		local function OnSystemClick(_, systemData)
@@ -2692,7 +2668,7 @@ function APII_CoreMixin:OnLoad()
 			self:OpenSystem(systemData);
 			if (scrollTo) then
 				local systemScroll = self:GetSystemScrollBox();
-				systemScroll:ScrollToElementData(systemData);
+				systemScroll:ScrollToElementData(systemData, ScrollBoxConstants.AlignNearest);
 			end
 		end
 
@@ -2804,12 +2780,6 @@ function APII_CoreMixin:OnLoad()
 			dummy:Initialize(data, APII.openedAPIs[data]);
 			return dummy:GetHeight();
 		end);
-		-- view:SetElementFactory(function(factory, elementData)
-		-- 	factory("APII_SystemContentTemplate", function(frame, data)
-		-- 		frame.parentFrame = self;
-		-- 		frame:Initialize(data);
-		-- 	end);
-		-- end);
 
 		ScrollUtil.InitScrollBoxListWithScrollBar(systemContentScrollBox, self.SystemContentScrollBar, view);
 
@@ -2836,60 +2806,44 @@ function APII_CoreMixin:OnLoad()
 		
 		generalSearch:RegisterCallback(APII_SearchboxMixin.Event.OnClearButtonClicked, function()
 			OnGeneralSearchChanged(self);
-			-- systemSearch:Show();
-			-- self:UpdateSystemsList();
-			-- self:UpdateSystemContent(true);
-			-- self:AddHistory(APII_HistoryReason.GeneralSearch);
 		end, self);
 	end
 
 	local systemContentSearch = self:GetSystemContentSearch();
 	systemContentSearch:RegisterCallback(APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
 		if (not userInput) then return; end
-			self:UpdateSystemContent(true);
+			self:UpdateSystemContent(ScrollBoxConstants.DiscardScrollPosition);
 			self:AddHistory(APII_HistoryReason.ContentSearch);
 		end, self);
 
 	systemContentSearch:RegisterCallback(APII_SearchboxMixin.Event.OnClearButtonClicked, function()
-			self:UpdateSystemContent(true);
+			self:UpdateSystemContent(ScrollBoxConstants.DiscardScrollPosition);
 			self:AddHistory(APII_HistoryReason.ContentSearch);
 		end, self);
-
 
 	local backButton = self:GetHistoryBackButton();
 	backButton:RegisterCallback(APII_HistoryButtonMixin.Event.OnClick, function(_, delta) self:StepHistory(delta); end);
 	backButton:SetTooltip(function()
-			GameTooltip_SetTitle(GameTooltip, "Back In History");
-			GameTooltip_AddInstructionLine(GameTooltip, "<Hold Shift to go to the very end>");
+			GameTooltip_SetTitle(GameTooltip, HISTORY_BACKWARDS);
+			GameTooltip_AddInstructionLine(GameTooltip, HISTORY_BACKWARDS_TT);
 		end);
 
 	local forwardButton = self:GetHistoryForwardButton();
 	forwardButton:RegisterCallback(APII_HistoryButtonMixin.Event.OnClick, function(_, delta) self:StepHistory(delta); end);
 	forwardButton:SetTooltip(function()
-			GameTooltip_SetTitle(GameTooltip, "Forward In History");
-			GameTooltip_AddInstructionLine(GameTooltip, "<Hold Shift to go to the very front>");
+			GameTooltip_SetTitle(GameTooltip, HISTORY_FORWARDS);
+			GameTooltip_AddInstructionLine(GameTooltip, HISTORY_FORWARDS_TT);
 		end);
 
 	local highlightButton = self:GetHighlightToggleButton();
 	highlightButton:RegisterCallback(APII_CheckButtonMixin.Event.OnClick, function() self:UpdateHyperlinking(); end, self);
 	highlightButton:SetTooltip(function(tooltip)
-			GameTooltip_SetTitle(tooltip, "Toggle Hyperlinks");
-			GameTooltip_AddNormalLine(tooltip, "Make API text clickable to hyperlink to other API.");
-			GameTooltip_AddInstructionLine(GameTooltip, "<Hold Shift to temporary enable hyperlinks>");
+			GameTooltip_SetTitle(tooltip, TOGGLE_HYPERLINKS);
+			GameTooltip_AddNormalLine(tooltip, TOGGLE_HYPERLINKS_TT);
+			GameTooltip_AddInstructionLine(GameTooltip, TOGGLE_HYPERLINKS_TT_SHIFT);
 		end);
 	
-
-	-- do
-	-- 	local function FilterDropdownSetup(dropdown, rootDescription)
-	-- 		rootDescription:SetTag("APII_FILTERS_DROPDOWN");
-	-- 	end
-
-	-- 	self.FilterDropdown:SetupMenu(FilterDropdownSetup);
-	-- end
-
 	do
-		
-
 		local sortedFilters = {};
 		for filterType in pairs(APII_FilterType) do
 			tinsert(sortedFilters, filterType);
@@ -3004,7 +2958,7 @@ function APII_CoreMixin:OnLoad()
 				local button = rootDescription:CreateButton("Functions", SearchGlobal, GlobalSearchTypes.Functions);
 				button:SetTooltip(function(tooltip, description)
 						GameTooltip_SetTitle(tooltip, description.text);
-						GameTooltip_AddNormalLine(tooltip, "Search functions with matching keys");
+						GameTooltip_AddNormalLine(tooltip, TT_SEARCH_FUNCTIONS);
 					end);
 			end
 
@@ -3012,7 +2966,7 @@ function APII_CoreMixin:OnLoad()
 				local button = rootDescription:CreateButton("Tables", SearchGlobal, GlobalSearchTypes.Tables);
 				button:SetTooltip(function(tooltip, description)
 						GameTooltip_SetTitle(tooltip, description.text);
-						GameTooltip_AddNormalLine(tooltip, "Search tables with matching keys");
+						GameTooltip_AddNormalLine(tooltip, TT_SEARCH_TABLES);
 					end);
 			end
 
@@ -3020,8 +2974,8 @@ function APII_CoreMixin:OnLoad()
 				local button = rootDescription:CreateButton("Frames", SearchGlobal, GlobalSearchTypes.Frames);
 				button:SetTooltip(function(tooltip, description)
 						GameTooltip_SetTitle(tooltip, description.text);
-						GameTooltip_AddNormalLine(tooltip, "Search frames with matching keys");
-						GameTooltip_AddColoredLine(tooltip, "Does not include frames marked as \"Forbidden\"", RED_FONT_COLOR);
+						GameTooltip_AddNormalLine(tooltip, TT_SEARCH_FRAMES);
+						GameTooltip_AddColoredLine(tooltip, TT_SEARCH_FRAMES_FORBIDDEN, RED_FONT_COLOR);
 					end);
 			end
 
@@ -3029,9 +2983,9 @@ function APII_CoreMixin:OnLoad()
 				local button = rootDescription:CreateButton("Strings", SearchGlobal, GlobalSearchTypes.Strings);
 				button:SetTooltip(function(tooltip, description)
 						GameTooltip_SetTitle(tooltip, description.text);
-						GameTooltip_AddNormalLine(tooltip, "Search strings with matching key");
-						GameTooltip_AddInstructionLine(GameTooltip, "<Control Click to match value>");
-						GameTooltip_AddInstructionLine(GameTooltip, "<Shift Click to match either key or value>");
+						GameTooltip_AddNormalLine(tooltip, TT_SEARCH_STRINGS);
+						GameTooltip_AddInstructionLine(GameTooltip, TT_SEARCH_STRINGS_VALUE);
+						GameTooltip_AddInstructionLine(GameTooltip, TT_SEARCH_STRINGS_BOTH);
 					end);
 			end
 
@@ -3039,7 +2993,7 @@ function APII_CoreMixin:OnLoad()
 				local button = rootDescription:CreateButton("Values", SearchGlobal, GlobalSearchTypes.Values);
 				button:SetTooltip(function(tooltip, description)
 						GameTooltip_SetTitle(tooltip, description.text);
-						GameTooltip_AddNormalLine(tooltip, "Search values with matching keys");
+						GameTooltip_AddNormalLine(tooltip, TT_SEARCH_VALUES);
 					end);
 			end
 		end
@@ -3051,14 +3005,18 @@ function APII_CoreMixin:OnLoad()
 
 
 	-- This has to be last
-	local minWidth = 800;
-	local minHeight = 500;
 	local maxWidth, maxHeight = GetPhysicalScreenSize();
-	self.ResizeButton:Init(self, minWidth, minHeight, maxWidth, maxHeight);
+	self.ResizeButton:Init(self, MIN_FRAME_WIDTH, MIN_FRAME_HEIGHT, maxWidth, maxHeight);
 	self.ResizeButton:SetOnResizeStoppedCallback(function() self:OnDragStop() end)
 
 	self.g = true;
 
+end
+
+function APII_CoreMixin:Reset()
+	self:ClearAllPoints();
+	self:SetPoint("CENTER", UIParent);
+	self:SetSize(MIN_FRAME_WIDTH, MIN_FRAME_HEIGHT);
 end
 
 function APII_CoreMixin:OnUpdate()
@@ -3142,16 +3100,55 @@ function APII_CoreMixin:OpenSystem(system)
 	self:UpdateSearchBoxVisibility();
 
 	self:UpdateSystemsList();
-	self:UpdateSystemContent();
+	self:UpdateSystemContent(ScrollBoxConstants.DiscardScrollPosition);
 
 	self:AddHistory(APII_HistoryReason.SystemOpen);
 end
 
-do
+function APII_CoreMixin:UpdateSystemContent(scrollPosition)
+	if (not self.g) then return; end
+
+	local dataProvider = CreateDataProvider();
+
+	local generalSearch = self:GetGeneralSearch();
+	local systemContentSearch = self:GetSystemContentSearch();
+	systemContentSearch:SetShown(APII.openedSystem ~= nil);
+
+	local searchString = generalSearch:GetText();
+	if (#searchString == 0) then
+		searchString = systemContentSearch:GetText();
+	end
+
+	local apiMatches = nil;
+	if (APII.openedSystem) then
+		local searchInstructionText = string.format("Search In %s", APII.openedSystem.Name);
+		systemContentSearch.Instructions:SetText(searchInstructionText);
+		InputBoxInstructions_OnTextChanged(systemContentSearch);
+
+		local bannerText = APII.openedSystem.Name;
+		if (APII.openedSystem.Namespace) then
+			bannerText = string.format("%s (%s)", bannerText,
+				APII_NAMESPACE_COLOR:WrapTextInColorCode(APII.openedSystem.Namespace));
+		end
+
+		if (searchString and #searchString > 0) then
+			apiMatches = APII.openedSystem:FindAllAPIMatches(searchString);
+		else
+			apiMatches = APII.openedSystem:ListAllAPI();
+		end
+
+		dprint("- - - -")
+		dprint(apiMatches, apiMatches and #apiMatches or "");
+	else
+		if (searchString and #searchString > 0) then
+			apiMatches = APIDocumentation:FindAllAPIMatches(searchString);
+		end
+	end
+
 	local total = 0;
 	local passed = 0;
 
-	local function AddSystemContentToDateprovider(dataProvider, info)
+	local function AddSystemContentToDateprovider(info)
 		total = total + 1;
 		if (InfoPassesFilters(info)) then
 			dataProvider:Insert(info);
@@ -3159,70 +3156,25 @@ do
 		end
 	end
 
-	function APII_CoreMixin:UpdateSystemContent(resetPosition)
-		if (not self.g) then return; end
-
-		local dataProvider = CreateDataProvider();
-
-		local generalSearch = self:GetGeneralSearch();
-		local systemContentSearch = self:GetSystemContentSearch();
-		systemContentSearch:SetShown(APII.openedSystem ~= nil);
-
-		local searchString = generalSearch:GetText();
-		if (#searchString == 0) then
-			searchString = systemContentSearch:GetText();
+	if (apiMatches) then
+		for k, info in ipairs(apiMatches.functions) do
+			AddSystemContentToDateprovider(info);
 		end
 
-		local apiMatches = nil;
-		if (APII.openedSystem) then
-			local searchInstructionText = string.format("Search In %s", APII.openedSystem.Name);
-			systemContentSearch.Instructions:SetText(searchInstructionText);
-			InputBoxInstructions_OnTextChanged(systemContentSearch);
-
-			local bannerText = APII.openedSystem.Name;
-			if (APII.openedSystem.Namespace) then
-				bannerText = string.format("%s (%s)", bannerText,
-					APII_NAMESPACE_COLOR:WrapTextInColorCode(APII.openedSystem.Namespace));
-			end
-			--inSystemBanner.Text:SetText(bannerText);
-
-
-			if (searchString and #searchString > 0) then
-				apiMatches = APII.openedSystem:FindAllAPIMatches(searchString);
-			else
-				apiMatches = APII.openedSystem:ListAllAPI();
-			end
-
-			--apiMatches = APIDocumentation:FindAllAPIMatches("quest");
-			dprint("- - - -")
-			dprint(apiMatches, apiMatches and #apiMatches or "");
-		else
-			if (searchString and #searchString > 0) then
-				apiMatches = APIDocumentation:FindAllAPIMatches(searchString);
-			end
+		for k, info in ipairs(apiMatches.events) do
+			AddSystemContentToDateprovider(info);
 		end
 
-		total = 0;
-		passed = 0;
-
-		if (apiMatches) then
-			for k, info in ipairs(apiMatches.functions) do
-				AddSystemContentToDateprovider(dataProvider, info);
-			end
-
-			for k, info in ipairs(apiMatches.events) do
-				AddSystemContentToDateprovider(dataProvider, info);
-			end
-
-			for k, info in ipairs(apiMatches.tables) do
-				AddSystemContentToDateprovider(dataProvider, info);
-			end
+		for k, info in ipairs(apiMatches.tables) do
+			AddSystemContentToDateprovider(info);
 		end
-		dprint(passed, "/", total);
-
-		local systemContentScrollBox = self:GetSystemContentScrollBox();
-		systemContentScrollBox:SetDataProvider(dataProvider, resetPosition and ScrollBoxConstants.DiscardScrollPosition or ScrollBoxConstants.RetainScrollPosition);
 	end
+	dprint(passed, "/", total);
+
+	local systemContentScrollBox = self:GetSystemContentScrollBox();
+
+	scrollPosition = scrollPosition == nil and ScrollBoxConstants.RetainScrollPosition or scrollPosition;
+	systemContentScrollBox:SetDataProvider(dataProvider, scrollPosition);
 end
 
 function APII_CoreMixin:CloseAllAPI()
