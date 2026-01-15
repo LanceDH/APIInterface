@@ -465,10 +465,7 @@
 				<Anchors>
 					<Anchor point="TOPLEFT"/>
 				</Anchors>
-				<FontString inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4" indented="true">
-					<!-- <Color r="0.95" g="0.95" b="0.95"/> -->
-				</FontString>
-
+				<FontString inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP" spacing="4" indented="true"/>
 				<Scripts>
 					<OnHyperlinkClick>
 						self:GetParent():GetParent():OnHyperlinkClick(link, text, button);
@@ -520,21 +517,34 @@
 	</Frame>
 
 	<Frame name="APII_TableTextAreaTemplate" inherits="APII_TextAreaTemplate" mixin="APII_TableTextAreaMixin" virtual="true">
-		<KeyValues>
-			<KeyValue key="HitInsetLeft" type="number" value="-4"/>
-			<KeyValue key="HitInsetRight" type="number" value="-4"/>
-			<KeyValue key="HitInsetTop" type="number" value="-4"/>
-			<KeyValue key="HitInsetBottom" type="number" value="-4"/>
-		</KeyValues>
-
 		<Layers>
 			<Layer level="BACKGROUND">
-				
-				<Texture parentKey="Background" setAllPoints="true">
+				<Texture parentKey="Background" setAllPoints="true" texelSnappingBias="0.0" snapToPixelGrid="false">
 					<Color r="1" g="0" b="0"/>
 				</Texture>
 			</Layer>
 		</Layers>
+	</Frame>
+
+	<Frame name="APII_TextAreaNineSliceTemplate" inherits="APII_TextAreaTemplate" mixin="APII_TextBlockNineSliceMixin" virtual="true">
+		<Frames>
+			<Frame parentKey="Background" mixin="NineSlicePanelMixin" setAllPoints="true">
+				<KeyValues>
+					<KeyValue key="layoutType" value="UniqueCornersLayout" type="string"/>
+					<KeyValue key="layoutTextureKit" value="ui-hud-minimap-button" type="string"/>
+				</KeyValues>
+				<Scripts>
+					<OnLoad>
+						self:OnLoad();
+						self:SetVertexColor(1,1,1,1);
+					</OnLoad>
+				</Scripts>
+			</Frame>
+		</Frames>
+
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
 	</Frame>
 
 	<Frame name="APII_TextBlockTemplate" mixin="APII_TextBlockMixin" virtual="true">
@@ -553,26 +563,7 @@
 
 	<Frame name="APII_TextBlockCopyStringTemplate" mixin="APII_TextBlockCopyStringMixin" virtual="true">
 		<Frames>
-			<Frame parentKey="Background" mixin="NineSlicePanelMixin">
-				<Anchors>
-					<Anchor point="TOPLEFT"/>
-				</Anchors>
-				<KeyValues>
-					<KeyValue key="layoutType" value="UniqueCornersLayout" type="string"/>
-					<KeyValue key="layoutTextureKit" value="ui-hud-minimap-button" type="string"/>
-				</KeyValues>
-				<Anchors>
-					<Anchor point="TOPRIGHT" relativePoint="TOPLEFT" x="-10" />
-				</Anchors>
-				<Scripts>
-					<OnLoad>
-						self:OnLoad();
-						self:SetVertexColor(1,1,1,1);
-					</OnLoad>
-				</Scripts>
-			</Frame>
-
-			<Frame parentKey="TextArea" inherits="APII_TextAreaTemplate">
+			<Frame parentKey="TextArea" inherits="APII_TextAreaNineSliceTemplate">
 				<Anchors>
 					<Anchor point="TOPLEFT"/>
 				</Anchors>
@@ -587,7 +578,7 @@
 	<Frame name="APII_TextBlockTableTemplate" mixin="APII_TextBlockTableMixin" virtual="true">
 		<Layers>
 			<Layer level="BACKGROUND">
-				<Texture parentKey="Background"/>
+				<Texture parentKey="Background" texelSnappingBias="0.0" snapToPixelGrid="false"/>
 			</Layer>
 		</Layers>
 

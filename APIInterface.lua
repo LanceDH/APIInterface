@@ -907,49 +907,31 @@ local function slashcmd(msg, editbox)
 end
 SlashCmdList["APIISLASH"] = slashcmd
 
+local TextScaleCategoryEnum = EnumUtil.MakeEnum("Medium", "Large");
+local TextScaleEnum = EnumUtil.MakeEnum("Normal", "Big");
 
-local activeSize = 1;
+local activeTextScaleCategory = TextScaleEnum.Normal;
 
-local fontTest = {
-	[1] = {
-		["normal"] = "GameFontHighlight";
-		["big"] = "GameFontHighlightMedium";
+local fontSizeTable = {
+	[TextScaleCategoryEnum.Medium] = {
+		[TextScaleEnum.Normal] = "GameFontHighlight";
+		[TextScaleEnum.Big] = "GameFontHighlightMedium";
 	};
-	[2] = {
-		["normal"] = "GameFontHighlightMedium";
-		["big"] = "GameFontHighlightLarge";
+	[TextScaleCategoryEnum.Large] = {
+		[TextScaleEnum.Normal] = "GameFontHighlightMedium";
+		[TextScaleEnum.Big] = "GameFontHighlightLarge";
 	};
 }
 
-local function GetFont(size)
-	return fontTest[activeSize][size];
+local function GetFont(scale)
+	local category = fontSizeTable[activeTextScaleCategory];
+	return category[scale] or category[TextScaleEnum.Normal]
 end
-
-
-local APII_StringTesterMixin = {};
-
-function APII_StringTesterMixin:Init()
-	self.frame = CreateFrame("Frame", nil, UIParent);
-	self.fontString = self.frame:CreateFontString(nil, nil, "GameFontHighlight");
-end
-
-function APII_StringTesterMixin:TestUnboundWidth(text, textSize)
-	textSize = textSize or "normal";
-	local font = GetFont(textSize);
-	self.fontString:SetFontObject(font);
-	self.fontString:SetText(text);
-	return self.fontString:GetUnboundedStringWidth();
-end
-
-local StringTester = CreateAndInitFromMixin(APII_StringTesterMixin);
-
-
 
 local function dprint(...)
 	if true then return; end
 	print(...);
 end
-
 
 local APII_UNDOCUMENTED_MESSAGE = "This function is not officially documented but exists in this namespace.";
 local DOCUMENTATION_TO_COLOR_RED = {
@@ -966,288 +948,6 @@ local APII_NAMESPACE_COLOR = DISABLED_FONT_COLOR;
 local APII_VARIABLE_FIELD_COLOR = LIGHTYELLOW_FONT_COLOR;
 
 local APII_FrameFactory = CreateFrameFactory();
-
-APII_VerticalLayoutMixin = {};
-
-function APII_VerticalLayoutMixin:OnLoad()
-	self.children = { self:GetChildren() };
-
-	for k, child in ipairs(self.children) do
-		child:HookScript("OnShow", function() self:ReAnchorChildren() end);
-		child:HookScript("OnHide", function() self:ReAnchorChildren() end);
-	end
-end
-
-do
-	local function GetChildPadding(child)
-		return child.leftPadding or 0,
-			child.rightPadding or 0,
-			child.topPadding or 0,
-			child.bottomPadding or 0;
-	end
-
-	function APII_VerticalLayoutMixin:ReAnchorChildren()
-		local visibleChildren = {};
-		for k, child in ipairs(self.children) do
-			child:ClearAllPoints();
-			if (child:IsVisible()) then
-				tinsert(visibleChildren, child);
-			end
-		end
-
-		local anchor = nil;
-		for k, child in ipairs(visibleChildren) do
-			local lChildPadding, rChildPadding, tChildPadding, bChildPadding = GetChildPadding(child);
-			child:SetPoint("LEFT", self, lChildPadding, 0);
-			child:SetPoint("RIGHT", self, -rChildPadding, 0);
-			if (anchor) then
-				child:SetPoint("TOP", anchor, "BOTTOM", 0, -tChildPadding);
-			else
-				child:SetPoint("TOP", self, 0, -tChildPadding);
-			end
-			
-			anchor = child;
-
-			if (k == #visibleChildren) then
-				child:SetPoint("BOTTOM", self, 0, bChildPadding);
-			end
-		end
-	end
-end
-
-APII_EditBoxMixin = CreateFromMixins(CallbackRegistryMixin);
-
-APII_EditBoxMixin:GenerateCallbackEvents(
-	{
-		"OnTextChanged";
-	}
-);
-
-function APII_EditBoxMixin:OnLoad()
-	CallbackRegistryMixin.OnLoad(self);
-	self.defaultHighlightColor = CreateColor(self:GetHighlightColor());
-end
-
-function APII_EditBoxMixin:OnEnterPressed()
-	self:ClearFocus();
-end
-
-function APII_EditBoxMixin:OnEditFocusLost()
-	self:ClearHighlightText();
-end
-
-function APII_EditBoxMixin:OnKeyDown(key)
-	if (IsControlKeyDown() and (key == "C" or key == "X")) then
-		self:StartCopyHighlight();
-		PlaySound(SOUNDKIT.TUTORIAL_POPUP);
-	end
-end
-
-function APII_EditBoxMixin:OnTextChanged(userInput)
-	if (userInput) then
-		self:SetAlpha(0);
-		C_Timer.After(0, function()
-			self:SetAlpha(1);
-		end);
-		self:SetText(self.originalText);
-		self:ClearFocus();
-	end
-	self:TriggerEvent(APII_EditBoxMixin.Event.OnTextChanged, userInput);
-end
-
-function APII_EditBoxMixin:OnHide()
-	self:StopCopyHighlight();
-end
-
-function APII_EditBoxMixin:OnShow()
-	self:SetHighlightColor(0, 0 , 0, 0);
-
-	C_Timer.After(0, function()
-		self:SetHighlightColor(self.defaultHighlightColor:GetRGB());
-	end);
-end
-
-local COPY_HIGHLIGHT_DURATION = 0.3;
-local COPY_HIGHLIGHT_COLOR = CreateColor(0.6, 0.6, 0.2);
-
-function APII_EditBoxMixin:StartCopyHighlight()
-	self:SetHighlightColor(COPY_HIGHLIGHT_COLOR:GetRGB());
-	self.highlightTimer = COPY_HIGHLIGHT_DURATION;
-	if (not self.updateScriptSet) then
-		self:SetScript("OnUpdate", self.OnUpdate);
-		self.updateScriptSet = true;
-	end
-end
-
-function APII_EditBoxMixin:StopCopyHighlight()
-	self:SetHighlightColor(self.defaultHighlightColor:GetRGB());
-	self:SetScript("OnUpdate", nil);
-	self.updateScriptSet = false;
-end
-
-function APII_EditBoxMixin:OnUpdate(elapsed)
-	self.highlightTimer = Clamp(self.highlightTimer - elapsed, 0, COPY_HIGHLIGHT_DURATION);
-
-	local r, g, b = COPY_HIGHLIGHT_COLOR:GetRGB();
-	local rd, gd, bd = self.defaultHighlightColor:GetRGB();
-	local t = 1 - (self.highlightTimer / COPY_HIGHLIGHT_DURATION);
-	t = t * t * t;
-
-	self:SetHighlightColor(Lerp(r, rd, t), Lerp(g, gd, t), Lerp(b, bd, t));
-
-	if (self.highlightTimer <= 0) then
-		self:StopCopyHighlight();
-	end
-end
-
-
-APII_SearchboxMixin = CreateFromMixins(CallbackRegistryMixin);
-
-APII_SearchboxMixin:GenerateCallbackEvents(
-	{
-		"OnTextChanged";
-		"OnClearButtonClicked";
-		"OnEditFocusChanged";
-	}
-);
-
-function APII_SearchboxMixin:OnLoad()
-	CallbackRegistryMixin.OnLoad(self);
-	SearchBoxTemplate_OnLoad(self);
-	local function OnClearButtonClicked()
-		self:TriggerEvent(APII_SearchboxMixin.Event.OnClearButtonClicked);
-	end
-
-	self.clearButton:HookScript("OnClick", OnClearButtonClicked);
-end
-
-function APII_SearchboxMixin:OnTextChanged(userInput)
-	SearchBoxTemplate_OnTextChanged(self);
-
-	local text = self:GetText();
-	-- Color text on malformed patterns
-	if (not pcall(function() text:match(text) end)) then
-		self:SetTextColor(RED_FONT_COLOR:GetRGB());
-		return;
-	else
-		self:SetTextColor(WHITE_FONT_COLOR:GetRGB());
-	end
-
-	self:TriggerEvent(APII_SearchboxMixin.Event.OnTextChanged, self:GetText(), userInput);
-end
-
-function APII_SearchboxMixin:OnEditFocusGained()
-	self:TriggerEvent(APII_SearchboxMixin.Event.OnEditFocusChanged, true);
-end
-
-function APII_SearchboxMixin:OnEditFocusLost()
-	self:TriggerEvent(APII_SearchboxMixin.Event.OnEditFocusChanged, false);
-end
-
-
-local APII_TooltipMixin = {};
-
-function APII_TooltipMixin:SetTooltip(func)
-	self.tooltipFunc = func;
-end
-
-function APII_TooltipMixin:OnEnter()
-	if (self.tooltipFunc) then
-		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-		self.tooltipFunc(GameTooltip);
-		GameTooltip:Show();
-	end
-end
-
-function APII_TooltipMixin:OnLeave()
-	GameTooltip:Hide();
-end
-
-
-APII_HistoryButtonMixin = CreateFromMixins(CallbackRegistryMixin, APII_TooltipMixin);
-
-APII_HistoryButtonMixin:GenerateCallbackEvents(
-	{
-		"OnClick";
-	}
-);
-
-function APII_HistoryButtonMixin:OnLoad()
-	WowStyle2IconButtonMixin.OnLoad(self);
-	CallbackRegistryMixin.OnLoad(self);
-end
-
-function APII_HistoryButtonMixin:OnClick()
-	self:TriggerEvent(APII_HistoryButtonMixin.Event.OnClick, self.delta);
-end
-
-function APII_HistoryButtonMixin:OnEnter()
-	WowStyle2IconButtonMixin.OnEnter(self);
-	APII_TooltipMixin.OnEnter(self);
-end
-
-function APII_HistoryButtonMixin:OnLeave()
-	WowStyle2IconButtonMixin.OnLeave(self);
-	APII_TooltipMixin.OnLeave(self);
-end
-
-
-
-APII_CheckButtonMixin = CreateFromMixins(WowStyle2IconButtonMixin, CallbackRegistryMixin, APII_TooltipMixin);
-
-APII_CheckButtonMixin:GenerateCallbackEvents(
-	{
-		"OnClick";
-	}
-);
-
-function APII_CheckButtonMixin:OnLoad()
-	WowStyle2IconButtonMixin.OnLoad(self);
-	CallbackRegistryMixin.OnLoad(self);
-end
-
-function APII_CheckButtonMixin:OnButtonStateChanged()
-	self.Background:SetAtlas(self:GetBackgroundAtlas(), TextureKitConstants.UseAtlasSize);
-
-	local icon = self.normalAtlas;
-	local useAtlasSize = (not self.iconWidth or not self.iconHeight) and TextureKitConstants.UseAtlasSize or TextureKitConstants.IgnoreAtlasSize;
-	local alpha = self:GetIconHighlighted() and 1 or 0.5;
-	alpha = 1;
-	local saturation = self:GetIconHighlighted() and 1 or 0.5;
-	if (self.disabledAtlas) then
-		icon = self:IsEnabled() and self.normalAtlas or self.disabledAtlas;
-	end
-	self.Icon:SetAtlas(icon, useAtlasSize);
-	self.Icon:SetVertexColor(saturation, saturation, saturation);
-	self.Icon:SetAlpha(alpha);
-	if (not useAtlasSize) then
-		self.Icon:SetSize(self.iconWidth, self.iconHeight);
-	end
-end
-
-function APII_CheckButtonMixin:SetIconHighlighted(value)
-	self.highlightOverriden = value;
-	self:OnButtonStateChanged();
-end
-
-function APII_CheckButtonMixin:GetIconHighlighted()
-	return self:GetChecked() or self.highlightOverriden;
-end
-
-function APII_CheckButtonMixin:OnClick()
-	self:OnButtonStateChanged();
-	self:TriggerEvent(APII_CheckButtonMixin.Event.OnClick);
-end
-
-function APII_CheckButtonMixin:OnEnter()
-	WowStyle2IconButtonMixin.OnEnter(self);
-	APII_TooltipMixin.OnEnter(self);
-end
-
-function APII_CheckButtonMixin:OnLeave()
-	WowStyle2IconButtonMixin.OnLeave(self);
-	APII_TooltipMixin.OnLeave(self);
-end
 
 
 local function AlterOfficialDocumentation()
@@ -1288,7 +988,6 @@ local function AlterOfficialDocumentation()
 			result = constant[self:GetName()];
 		end
 
-		return result or "unknown";
 	end
 
 	function APII_ValueAPIMixin:GetSingleOutputLine()
@@ -1305,20 +1004,10 @@ local function AlterOfficialDocumentation()
 				dprint(constant, self:GetName(), typeApi);
 				valueString = string.format("%s (%s)", value, typeApi and typeApi:GenerateAPILink() or self.Type);
 			end
-			
-
-			-- local enum = Enum[self.Type];
-			-- if (enum) then
-			-- 	local enumValue = enum[self.Value];
-			-- 	print(self.Type, self.Value, enumValue)
-			-- end
-			
 		end
 		
 		return string.format("%s %s", self:GenerateAPILink(), valueString);
 	end
-
-
 
 	local function ReplacerMatchFunc(self, searchString)
 		local succes = self:originalMatchesSearchString(searchString);
@@ -1330,8 +1019,6 @@ local function AlterOfficialDocumentation()
 
 		return false;
 	end
-
-
 
 	if (not APIDocumentation.values) then
 		for k, tableApi in ipairs(APIDocumentation.tables) do
@@ -1444,12 +1131,10 @@ local function AlterOfficialDocumentation()
 				tinsert(system.Functions, newAPI);
 				tinsert(APIDocumentation.functions, newAPI);
 				madeChange = true;
-				--count = count + 1;
 			end
 
 			if (madeChange) then
 				table.sort(system.Functions, FunctionListSort);
-				--print(system.Namespace, "->", count)
 			end
 		end
 	end
@@ -1457,7 +1142,333 @@ local function AlterOfficialDocumentation()
 	tinsert(APIDocumentation.systems, 1, noSystemContent);
 end
 
+--------------------------------
+-- String Tester
+--------------------------------
 
+local APII_StringTesterMixin = {};
+
+function APII_StringTesterMixin:Init()
+	self.frame = CreateFrame("Frame", nil, UIParent);
+	self.fontString = self.frame:CreateFontString(nil, nil, "GameFontHighlight");
+end
+
+function APII_StringTesterMixin:TestUnboundWidth(text, textSize)
+	textSize = textSize or TextScaleEnum.Normal;
+	local font = GetFont(textSize);
+	self.fontString:SetFontObject(font);
+	self.fontString:SetText(text);
+	return self.fontString:GetUnboundedStringWidth();
+end
+
+local StringTester = CreateAndInitFromMixin(APII_StringTesterMixin);
+
+--------------------------------
+-- Vertical layout
+--------------------------------
+
+APII_VerticalLayoutMixin = {};
+
+function APII_VerticalLayoutMixin:OnLoad()
+	self.children = { self:GetChildren() };
+
+	for k, child in ipairs(self.children) do
+		child:HookScript("OnShow", function() self:ReAnchorChildren() end);
+		child:HookScript("OnHide", function() self:ReAnchorChildren() end);
+	end
+end
+
+do
+	local function GetChildPadding(child)
+		return child.leftPadding or 0,
+			child.rightPadding or 0,
+			child.topPadding or 0,
+			child.bottomPadding or 0;
+	end
+
+	function APII_VerticalLayoutMixin:ReAnchorChildren()
+		local visibleChildren = {};
+		for k, child in ipairs(self.children) do
+			child:ClearAllPoints();
+			if (child:IsVisible()) then
+				tinsert(visibleChildren, child);
+			end
+		end
+
+		local anchor = nil;
+		for k, child in ipairs(visibleChildren) do
+			local lChildPadding, rChildPadding, tChildPadding, bChildPadding = GetChildPadding(child);
+			child:SetPoint("LEFT", self, lChildPadding, 0);
+			child:SetPoint("RIGHT", self, -rChildPadding, 0);
+			if (anchor) then
+				child:SetPoint("TOP", anchor, "BOTTOM", 0, -tChildPadding);
+			else
+				child:SetPoint("TOP", self, 0, -tChildPadding);
+			end
+			
+			anchor = child;
+
+			if (k == #visibleChildren) then
+				child:SetPoint("BOTTOM", self, 0, bChildPadding);
+			end
+		end
+	end
+end
+
+--------------------------------
+-- Editbox
+--------------------------------
+
+APII_EditBoxMixin = CreateFromMixins(CallbackRegistryMixin);
+
+APII_EditBoxMixin:GenerateCallbackEvents(
+	{
+		"OnTextChanged";
+	}
+);
+
+function APII_EditBoxMixin:OnLoad()
+	CallbackRegistryMixin.OnLoad(self);
+	self.defaultHighlightColor = CreateColor(self:GetHighlightColor());
+end
+
+function APII_EditBoxMixin:OnEnterPressed()
+	self:ClearFocus();
+end
+
+function APII_EditBoxMixin:OnEditFocusLost()
+	self:ClearHighlightText();
+end
+
+function APII_EditBoxMixin:OnKeyDown(key)
+	if (IsControlKeyDown() and (key == "C" or key == "X")) then
+		self:StartCopyHighlight();
+		PlaySound(SOUNDKIT.TUTORIAL_POPUP);
+	end
+end
+
+function APII_EditBoxMixin:OnTextChanged(userInput)
+	if (userInput) then
+		self:SetAlpha(0);
+		C_Timer.After(0, function()
+			self:SetAlpha(1);
+		end);
+		self:SetText(self.originalText);
+		self:ClearFocus();
+	end
+	self:TriggerEvent(APII_EditBoxMixin.Event.OnTextChanged, userInput);
+end
+
+function APII_EditBoxMixin:OnHide()
+	self:StopCopyHighlight();
+end
+
+function APII_EditBoxMixin:OnShow()
+	self:SetHighlightColor(0, 0 , 0, 0);
+
+	C_Timer.After(0, function()
+		self:SetHighlightColor(self.defaultHighlightColor:GetRGB());
+	end);
+end
+
+do
+	local COPY_HIGHLIGHT_DURATION = 0.3;
+	local COPY_HIGHLIGHT_COLOR = CreateColor(0.6, 0.6, 0.2);
+
+	function APII_EditBoxMixin:StartCopyHighlight()
+		self:SetHighlightColor(COPY_HIGHLIGHT_COLOR:GetRGB());
+		self.highlightTimer = COPY_HIGHLIGHT_DURATION;
+		if (not self.updateScriptSet) then
+			self:SetScript("OnUpdate", self.OnUpdate);
+			self.updateScriptSet = true;
+		end
+	end
+
+	function APII_EditBoxMixin:StopCopyHighlight()
+		self:SetHighlightColor(self.defaultHighlightColor:GetRGB());
+		self:SetScript("OnUpdate", nil);
+		self.updateScriptSet = false;
+	end
+
+	function APII_EditBoxMixin:OnUpdate(elapsed)
+		self.highlightTimer = Clamp(self.highlightTimer - elapsed, 0, COPY_HIGHLIGHT_DURATION);
+
+		local r, g, b = COPY_HIGHLIGHT_COLOR:GetRGB();
+		local rd, gd, bd = self.defaultHighlightColor:GetRGB();
+		local t = 1 - (self.highlightTimer / COPY_HIGHLIGHT_DURATION);
+		t = t * t * t;
+
+		self:SetHighlightColor(Lerp(r, rd, t), Lerp(g, gd, t), Lerp(b, bd, t));
+
+		if (self.highlightTimer <= 0) then
+			self:StopCopyHighlight();
+		end
+	end
+end
+
+--------------------------------
+-- Searchbox
+--------------------------------
+
+APII_SearchboxMixin = CreateFromMixins(CallbackRegistryMixin);
+
+APII_SearchboxMixin:GenerateCallbackEvents(
+	{
+		"OnTextChanged";
+		"OnClearButtonClicked";
+		"OnEditFocusChanged";
+	}
+);
+
+function APII_SearchboxMixin:OnLoad()
+	CallbackRegistryMixin.OnLoad(self);
+	SearchBoxTemplate_OnLoad(self);
+	local function OnClearButtonClicked()
+		self:TriggerEvent(APII_SearchboxMixin.Event.OnClearButtonClicked);
+	end
+
+	self.clearButton:HookScript("OnClick", OnClearButtonClicked);
+end
+
+function APII_SearchboxMixin:OnTextChanged(userInput)
+	SearchBoxTemplate_OnTextChanged(self);
+
+	local text = self:GetText();
+	-- Color text on malformed patterns
+	if (not pcall(function() text:match(text) end)) then
+		self:SetTextColor(RED_FONT_COLOR:GetRGB());
+		return;
+	else
+		self:SetTextColor(WHITE_FONT_COLOR:GetRGB());
+	end
+
+	self:TriggerEvent(APII_SearchboxMixin.Event.OnTextChanged, self:GetText(), userInput);
+end
+
+function APII_SearchboxMixin:OnEditFocusGained()
+	self:TriggerEvent(APII_SearchboxMixin.Event.OnEditFocusChanged, true);
+end
+
+function APII_SearchboxMixin:OnEditFocusLost()
+	self:TriggerEvent(APII_SearchboxMixin.Event.OnEditFocusChanged, false);
+end
+
+--------------------------------
+-- Tooltip mixin
+--------------------------------
+
+local APII_TooltipMixin = {};
+
+function APII_TooltipMixin:SetTooltip(func)
+	self.tooltipFunc = func;
+end
+
+function APII_TooltipMixin:OnEnter()
+	if (self.tooltipFunc) then
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+		self.tooltipFunc(GameTooltip);
+		GameTooltip:Show();
+	end
+end
+
+function APII_TooltipMixin:OnLeave()
+	GameTooltip:Hide();
+end
+
+--------------------------------
+-- History Button
+--------------------------------
+
+APII_HistoryButtonMixin = CreateFromMixins(CallbackRegistryMixin, APII_TooltipMixin);
+
+APII_HistoryButtonMixin:GenerateCallbackEvents(
+	{
+		"OnClick";
+	}
+);
+
+function APII_HistoryButtonMixin:OnLoad()
+	WowStyle2IconButtonMixin.OnLoad(self);
+	CallbackRegistryMixin.OnLoad(self);
+end
+
+function APII_HistoryButtonMixin:OnClick()
+	self:TriggerEvent(APII_HistoryButtonMixin.Event.OnClick, self.delta);
+end
+
+function APII_HistoryButtonMixin:OnEnter()
+	WowStyle2IconButtonMixin.OnEnter(self);
+	APII_TooltipMixin.OnEnter(self);
+end
+
+function APII_HistoryButtonMixin:OnLeave()
+	WowStyle2IconButtonMixin.OnLeave(self);
+	APII_TooltipMixin.OnLeave(self);
+end
+
+--------------------------------
+-- Checkbutton
+--------------------------------
+
+APII_CheckButtonMixin = CreateFromMixins(WowStyle2IconButtonMixin, CallbackRegistryMixin, APII_TooltipMixin);
+
+APII_CheckButtonMixin:GenerateCallbackEvents(
+	{
+		"OnClick";
+	}
+);
+
+function APII_CheckButtonMixin:OnLoad()
+	WowStyle2IconButtonMixin.OnLoad(self);
+	CallbackRegistryMixin.OnLoad(self);
+end
+
+function APII_CheckButtonMixin:OnButtonStateChanged()
+	self.Background:SetAtlas(self:GetBackgroundAtlas(), TextureKitConstants.UseAtlasSize);
+
+	local icon = self.normalAtlas;
+	local useAtlasSize = (not self.iconWidth or not self.iconHeight) and TextureKitConstants.UseAtlasSize or TextureKitConstants.IgnoreAtlasSize;
+	local alpha = self:GetIconHighlighted() and 1 or 0.5;
+	alpha = 1;
+	local saturation = self:GetIconHighlighted() and 1 or 0.5;
+	if (self.disabledAtlas) then
+		icon = self:IsEnabled() and self.normalAtlas or self.disabledAtlas;
+	end
+	self.Icon:SetAtlas(icon, useAtlasSize);
+	self.Icon:SetVertexColor(saturation, saturation, saturation);
+	self.Icon:SetAlpha(alpha);
+	if (not useAtlasSize) then
+		self.Icon:SetSize(self.iconWidth, self.iconHeight);
+	end
+end
+
+function APII_CheckButtonMixin:SetIconHighlighted(value)
+	self.highlightOverriden = value;
+	self:OnButtonStateChanged();
+end
+
+function APII_CheckButtonMixin:GetIconHighlighted()
+	return self:GetChecked() or self.highlightOverriden;
+end
+
+function APII_CheckButtonMixin:OnClick()
+	self:OnButtonStateChanged();
+	self:TriggerEvent(APII_CheckButtonMixin.Event.OnClick);
+end
+
+function APII_CheckButtonMixin:OnEnter()
+	WowStyle2IconButtonMixin.OnEnter(self);
+	APII_TooltipMixin.OnEnter(self);
+end
+
+function APII_CheckButtonMixin:OnLeave()
+	WowStyle2IconButtonMixin.OnLeave(self);
+	APII_TooltipMixin.OnLeave(self);
+end
+
+--------------------------------
+-- TextArea mixins
+--------------------------------
 
 APII_TextAreaMixin = {};
 
@@ -1554,27 +1565,18 @@ function APII_TextAreaMixin:SetText(text, font)
 	self:SetHeight(height);
 end
 
+-- Padding
 
-APII_TableTextAreaMixin = CreateFromMixins(APII_TextAreaMixin)
+local APII_TextAreaPaddingMixin = {};
 
-function APII_TableTextAreaMixin:GetBackground()
-	return self.Background;
-end
-
-function APII_TableTextAreaMixin:SetBackgroundColor(color)
-	if (not color or not color.GetRGBA) then return; end
-	local background = self:GetBackground();
-	background:SetColorTexture(color:GetRGBA());
-end
-
-function APII_TableTextAreaMixin:GetPadding()
+function APII_TextAreaPaddingMixin:GetPadding()
 	return self.leftPadding or 0,
 		self.rightPadding or 0,
 		self.topPadding or 0,
 		self.bottomPadding or 0;
 end
 
-function APII_TableTextAreaMixin:SetPadding(left, right, top, bottom)
+function APII_TextAreaPaddingMixin:SetPadding(left, right, top, bottom)
 	self.leftPadding = left or 0;
 	self.rightPadding = right or 0;
 	self.topPadding = top or 0;
@@ -1582,12 +1584,12 @@ function APII_TableTextAreaMixin:SetPadding(left, right, top, bottom)
 	self:UpdateTextArea();
 end
 
-function APII_TableTextAreaMixin:SetAvailableWidth(width)
+function APII_TextAreaPaddingMixin:SetAvailableWidth(width)
 	self:SetWidth(width);
 	self:UpdateTextArea();
 end
 
-function APII_TableTextAreaMixin:UpdateTextArea()
+function APII_TextAreaPaddingMixin:UpdateTextArea()
 	local editBox = self:GetEditBox();
 	local html = self:GetHtml();
 	local fonsString = self:GetFontString();
@@ -1606,13 +1608,35 @@ function APII_TableTextAreaMixin:UpdateTextArea()
 	editBox:SetHitRectInsets(-leftPadding, -rightPadding, -topPadding, -bottomPadding);
 end
 
-function APII_TableTextAreaMixin:SetText(text, font)
+function APII_TextAreaPaddingMixin:SetText(text, font)
 	APII_TextAreaMixin.SetText(self, text, font);
 	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
 	local height = self:GetHeight() + topPadding + bottomPadding;
 	self:SetHeight(height);
 end
 
+-- Background
+
+APII_TableTextAreaMixin = CreateFromMixins(APII_TextAreaMixin, APII_TextAreaPaddingMixin)
+
+function APII_TableTextAreaMixin:GetBackground()
+	return self.Background;
+end
+
+function APII_TableTextAreaMixin:SetBackgroundColor(color)
+	if (not color or not color.GetRGBA) then return; end
+	local background = self:GetBackground();
+	background:SetColorTexture(color:GetRGBA());
+end
+
+-- Nineslice
+
+APII_TextBlockNineSliceMixin = CreateFromMixins(APII_TextAreaMixin, APII_TextAreaPaddingMixin);
+
+
+--------------------------------
+-- TextBlock mixins
+--------------------------------
 
 APII_TextBlockMixin = {};
 
@@ -1658,215 +1682,221 @@ function APII_TextBlockMixin:Initialize(blockData)
 	self:SetHeight(totalHeight);
 end
 
+-- CopyString Textblock
+
 APII_TextBlockCopyStringMixin = CreateFromMixins(APII_TextBlockMixin);
 
-local COPY_STRING_PADDING = 10;
+do
+	local COPY_STRING_PADDING = 10;
 
-function APII_TextBlockCopyStringMixin:Initialize(blockData)
-	self.blockData = blockData;
+	function APII_TextBlockCopyStringMixin:Initialize(blockData)
+		self.blockData = blockData;
 
-	local basicString = blockData.textString;
-	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
-	local width = self:GetWidth() - leftPadding - rightPadding;
-	local textAreaWidth = width - COPY_STRING_PADDING * 2;
+		local basicString = blockData.textString;
+		local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
+		local width = self:GetWidth() - leftPadding - rightPadding;
+		local textAreaWidth = width;
 
-	local textArea = self:GetTextArea()
-	textArea:SetPoint("TOPLEFT", leftPadding + COPY_STRING_PADDING, -topPadding - COPY_STRING_PADDING);
-	textArea:SetAvailableWidth(textAreaWidth);
-	textArea:SetText(basicString, blockData.font);
+		local textArea = self:GetTextArea()
+		textArea:SetPadding(COPY_STRING_PADDING, COPY_STRING_PADDING, COPY_STRING_PADDING, COPY_STRING_PADDING);
+		textArea:SetPoint("TOPLEFT", leftPadding , -topPadding);
+		textArea:SetAvailableWidth(textAreaWidth);
+		textArea:SetText(basicString, blockData.font);
 
-	self.Background:SetPoint("TOPLEFT", leftPadding, -topPadding);
-	self.Background:SetWidth(width);
-	self.Background:SetHeight(textArea:GetHeight() + COPY_STRING_PADDING * 2);
-
-	local totalHeight = textArea:GetHeight() + topPadding + bottomPadding + COPY_STRING_PADDING * 2;
-	self:SetHeight(totalHeight);
+		local totalHeight = textArea:GetHeight() + topPadding + bottomPadding;
+		self:SetHeight(totalHeight);
+	end
 end
 
+-- Table Textblock
 
 APII_TextBlockTableMixin = CreateFromMixins(APII_TextBlockMixin);
 
-local TABLE_SPACING_HORIZONTAL = 8;
-local TABLE_SPACING_VERTICAL = 5;
-local TABLE_SEPARATOR_WIDTH = 2;
+do
+	local TABLE_SPACING_HORIZONTAL = 8;
+	local TABLE_SPACING_VERTICAL = 5;
+	local TABLE_SEPARATOR_WIDTH = 2;
 
-local TABLE_BORDER_COLOR = CreateColor(0.0, 0.0, 0.0, 0.45);
-local TABLE_HEADER_COLOR = CreateColor(0.09, 0.09, 0.09, 1);
-local TABLE_ALTERNATE_LIGHT_COLOR = CreateColor(0.15, 0.15, 0.15, 1);
-local TABLE_ALTERNATE_DARK_COLOR = CreateColor(0.12, 0.12, 0.12, 1);
+	local TABLE_BORDER_COLOR = CreateColor(0.0, 0.0, 0.0, 0.45);
+	local TABLE_HEADER_COLOR = CreateColor(0.09, 0.09, 0.09, 1);
+	local TABLE_ALTERNATE_LIGHT_COLOR = CreateColor(0.15, 0.15, 0.15, 1);
+	local TABLE_ALTERNATE_DARK_COLOR = CreateColor(0.12, 0.12, 0.12, 1);
 
-function APII_TextBlockTableMixin:OnLoad()
-	APII_TextBlockMixin.OnLoad(self);
-	self.textAreas = {};
-end
-
-function APII_TextBlockTableMixin:SetHyperlinkingEnabled(enable)
-	for k, frame in ipairs(self.textAreas) do
-		frame:SetHyperlinkingEnabled(enable);
-	end
-end
-
-function APII_TextBlockTableMixin:Initialize(blockData)
-	self.blockData = blockData;
-
-	for k, frame in ipairs(self.textAreas) do
-		APII_FrameFactory:Release(frame);
-	end
-	wipe(self.textAreas);
-
-	if (not blockData.tableData) then
-		self:SetHeight(10);
-		return;
+	function APII_TextBlockTableMixin:OnLoad()
+		APII_TextBlockMixin.OnLoad(self);
+		self.textAreas = {};
 	end
 
-	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
-	local width = self:GetWidth() - leftPadding - rightPadding;
-
-	-- Gather minimum width of each column
-	local columnWidthData = {};
-	for rowIndex, row in ipairs(blockData.tableData.rowData) do
-		for contentIndex, content in ipairs(row.content) do
-			local contentWidth = content.width;
-			local widthData = columnWidthData[contentIndex];
-			if (not widthData) then
-				widthData = {
-					contentWidth = 0;
-					finalWidth = 0;
-				}
-				columnWidthData[contentIndex] = widthData;
-			end
-
-			widthData.preventScale = widthData.preventScale or content.preventScale;
-			if (not content.colSpan and widthData.contentWidth < contentWidth) then
-				widthData.contentWidth = contentWidth;
-			end
+	function APII_TextBlockTableMixin:SetHyperlinkingEnabled(enable)
+		for k, frame in ipairs(self.textAreas) do
+			frame:SetHyperlinkingEnabled(enable);
 		end
 	end
 
-	local totalColumnWidth = 0
-	local totalBorderWidth = TABLE_SEPARATOR_WIDTH * (#columnWidthData + 1);
-	local availableTextSpace = width - totalBorderWidth;
-	local scalableSpace = availableTextSpace;
-	local contentToScale = {};
-	for k, data in ipairs(columnWidthData) do
-		local contentWidth = data.contentWidth + TABLE_SPACING_HORIZONTAL * 2;
-		totalColumnWidth = totalColumnWidth + contentWidth;
-		tinsert(contentToScale, k);
-	end
+	function APII_TextBlockTableMixin:Initialize(blockData)
+		self.blockData = blockData;
 
-	-- Every cell gets 1/cells of the available space
-	-- Any cell that needs less space gets their space, the left over space is made available for the remaining cells
-	-- Repeat with new available space and remaining cells
-	-- If no cells need less space than available, give remaining cells 1/cells of the available space
-	if (#contentToScale > 0) then
-		local hadSmallerThanScale = true;
-		while hadSmallerThanScale do
-			hadSmallerThanScale = false;
-			local minColPerc = 1 / #contentToScale;
-			local smallestScaleSize = minColPerc * scalableSpace;
-			local beforeCount = #contentToScale;
-			for k, columnIndex in ipairs(contentToScale) do
-				local data = columnWidthData[columnIndex];
-				local contentWidth = data.contentWidth + TABLE_SPACING_HORIZONTAL * 2;
-				if (contentWidth < smallestScaleSize) then
-					hadSmallerThanScale = true;
-					data.finalWidth = contentWidth;
-					scalableSpace = scalableSpace - contentWidth;
-					tremove(contentToScale, k);
+		for k, frame in ipairs(self.textAreas) do
+			APII_FrameFactory:Release(frame);
+		end
+		wipe(self.textAreas);
+
+		if (not blockData.tableData) then
+			self:SetHeight(10);
+			return;
+		end
+
+		local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
+		local width = self:GetWidth() - leftPadding - rightPadding;
+
+		-- Gather minimum width of each column
+		local columnWidthData = {};
+		for rowIndex, row in ipairs(blockData.tableData.rowData) do
+			for contentIndex, content in ipairs(row.content) do
+				local contentWidth = content.width;
+				local widthData = columnWidthData[contentIndex];
+				if (not widthData) then
+					widthData = {
+						contentWidth = 0;
+						finalWidth = 0;
+					}
+					columnWidthData[contentIndex] = widthData;
+				end
+
+				widthData.preventScale = widthData.preventScale or content.preventScale;
+				if (not content.colSpan and widthData.contentWidth < contentWidth) then
+					widthData.contentWidth = Round(contentWidth);
 				end
 			end
+		end
 
-			if (#contentToScale == 0) then
-				-- Everything fit;
-				break;
-			end
+		local totalColumnWidth = 0
+		local totalBorderWidth = TABLE_SEPARATOR_WIDTH * (#columnWidthData + 1);
+		local availableTextSpace = width - totalBorderWidth;
+		local scalableSpace = availableTextSpace;
+		local contentToScale = {};
+		for k, data in ipairs(columnWidthData) do
+			local contentWidth = data.contentWidth + TABLE_SPACING_HORIZONTAL * 2;
+			totalColumnWidth = totalColumnWidth + contentWidth;
+			tinsert(contentToScale, k);
+		end
 
-			if (beforeCount == #contentToScale) then
+		-- Every cell gets 1/cells of the available space
+		-- Any cell that needs less space gets their space, the left over space is made available for the remaining cells
+		-- Repeat with new available space and remaining cells
+		-- If no cells need less space than available, give remaining cells 1/cells of the available space
+		if (#contentToScale > 0) then
+			local hadSmallerThanScale = true;
+			while hadSmallerThanScale do
+				hadSmallerThanScale = false;
+				local minColPerc = 1 / #contentToScale;
+				local smallestScaleSize = minColPerc * scalableSpace;
+				local beforeCount = #contentToScale;
 				for k, columnIndex in ipairs(contentToScale) do
 					local data = columnWidthData[columnIndex];
-					data.finalWidth = smallestScaleSize;
-					scalableSpace = scalableSpace - smallestScaleSize;
+					local contentWidth = data.contentWidth + TABLE_SPACING_HORIZONTAL * 2;
+					if (contentWidth < smallestScaleSize) then
+						hadSmallerThanScale = true;
+						data.finalWidth = contentWidth;
+						scalableSpace = scalableSpace - contentWidth;
+						tremove(contentToScale, k);
+					end
 				end
-				break;
-			end
-		end
-	end
 
-	-- Add any left over space to the last column to all tables are full width
-	-- if (scalableSpace > 0) then
-	-- 	local lastColumnData = columnWidthData[#columnWidthData];
-	-- 	lastColumnData.finalWidth = lastColumnData.finalWidth + scalableSpace;
-	-- end
-	
-	local xOffset = 0;
-	local yOffset = topPadding + TABLE_SEPARATOR_WIDTH;
-	local rowFrames = {};
-	for rowIndex, row in ipairs(blockData.tableData.rowData) do
-		xOffset = leftPadding + TABLE_SEPARATOR_WIDTH;
-		yOffset = yOffset;
-		local rowHeight = 0
-		local rowColor = TABLE_HEADER_COLOR;
-		if (not row.isHeader) then
-			rowColor = rowIndex % 2 == 1 and TABLE_ALTERNATE_DARK_COLOR or TABLE_ALTERNATE_LIGHT_COLOR;
-		end
+				if (#contentToScale == 0) then
+					-- Everything fit;
+					break;
+				end
 
-		-- Doing this with a while loop so we can skip columns for colSpan
-		local columnIndex = 1;
-		while columnIndex <= #columnWidthData do
-			local columnData = columnWidthData[columnIndex];
-			if (columnIndex ~= 1) then
-				xOffset = xOffset + TABLE_SEPARATOR_WIDTH;
-			end
-
-			local content = row.content[columnIndex];
-			local columnWidth = columnData.finalWidth;
-			if (content and content.colSpan and content.colSpan > 1) then
-				for i = 1, content.colSpan - 1, 1 do
-					local col = columnWidthData[columnIndex + 1];
-					if (not col) then break; end
-					columnIndex = columnIndex + 1;
-					columnWidth = columnWidth + TABLE_SEPARATOR_WIDTH + col.finalWidth;
+				if (beforeCount == #contentToScale) then
+					for k, columnIndex in ipairs(contentToScale) do
+						local data = columnWidthData[columnIndex];
+						local ceiled = ceil(smallestScaleSize)
+						data.finalWidth = ceiled;
+						scalableSpace = scalableSpace - ceiled;
+					end
+					break;
 				end
 			end
-
-			local textArea = APII_FrameFactory:Create(self, "APII_TableTextAreaTemplate");
-			textArea:SetParent(self);
-			textArea:Show();
-			textArea:SetPoint("TOPLEFT", xOffset, -yOffset);
-			textArea:SetAvailableWidth(columnWidth);
-			textArea:SetPadding(TABLE_SPACING_HORIZONTAL, TABLE_SPACING_HORIZONTAL, TABLE_SPACING_VERTICAL, TABLE_SPACING_VERTICAL);
-			local text = content and content.text or "";
-			textArea:SetText(text, blockData.font);
-			textArea:SetBackgroundColor(rowColor);
-			tinsert(self.textAreas, textArea);
-			tinsert(rowFrames, textArea);
-			local areaHeight = textArea:GetHeight();
-			rowHeight = max(rowHeight, areaHeight);
-			xOffset = xOffset + columnWidth;
-
-			columnIndex = columnIndex + 1;
 		end
 
-		for k, frame in ipairs(rowFrames) do
-			frame:SetHeight(rowHeight);
-		end
-		wipe(rowFrames);
+		-- Add any left over space to the last column to all tables are full width
+		-- if (scalableSpace > 0) then
+		-- 	local lastColumnData = columnWidthData[#columnWidthData];
+		-- 	lastColumnData.finalWidth = lastColumnData.finalWidth + scalableSpace;
+		-- end
+		
+		local xOffset = 0;
+		local yOffset = topPadding + TABLE_SEPARATOR_WIDTH;
+		local rowFrames = {};
+		for rowIndex, row in ipairs(blockData.tableData.rowData) do
+			xOffset = leftPadding + TABLE_SEPARATOR_WIDTH;
+			yOffset = yOffset;
+			local rowHeight = 0
+			local rowColor = TABLE_HEADER_COLOR;
+			if (not row.isHeader) then
+				rowColor = rowIndex % 2 == 1 and TABLE_ALTERNATE_DARK_COLOR or TABLE_ALTERNATE_LIGHT_COLOR;
+			end
 
-		yOffset = yOffset + rowHeight;
+			-- Doing this with a while loop so we can skip columns for colSpan
+			local columnIndex = 1;
+			while columnIndex <= #columnWidthData do
+				local columnData = columnWidthData[columnIndex];
+				if (columnIndex ~= 1) then
+					xOffset = xOffset + TABLE_SEPARATOR_WIDTH;
+				end
+
+				local content = row.content[columnIndex];
+				local columnWidth = columnData.finalWidth;
+				if (content and content.colSpan and content.colSpan > 1) then
+					for i = 1, content.colSpan - 1, 1 do
+						local col = columnWidthData[columnIndex + 1];
+						if (not col) then break; end
+						columnIndex = columnIndex + 1;
+						columnWidth = columnWidth + TABLE_SEPARATOR_WIDTH + col.finalWidth;
+					end
+				end
+
+				local textArea = APII_FrameFactory:Create(self, "APII_TableTextAreaTemplate");
+				textArea:SetParent(self);
+				textArea:Show();
+				PixelUtil.SetPoint(textArea, "TOPLEFT", self, "TOPLEFT", xOffset, -yOffset);
+				textArea:SetAvailableWidth(columnWidth);
+				textArea:SetPadding(TABLE_SPACING_HORIZONTAL, TABLE_SPACING_HORIZONTAL, TABLE_SPACING_VERTICAL, TABLE_SPACING_VERTICAL);
+				local text = content and content.text or "";
+				textArea:SetText(text, blockData.font);
+				textArea:SetBackgroundColor(rowColor);
+				tinsert(self.textAreas, textArea);
+				tinsert(rowFrames, textArea);
+				local areaHeight = textArea:GetHeight();
+				rowHeight = max(rowHeight, areaHeight);
+				xOffset = xOffset + columnWidth;
+
+				columnIndex = columnIndex + 1;
+			end
+
+			for k, frame in ipairs(rowFrames) do
+				frame:SetHeight(rowHeight);
+			end
+			wipe(rowFrames);
+
+			yOffset = yOffset + rowHeight;
+		end
+
+		local totalWidth = width - scalableSpace;
+		self.Background:SetHeight(yOffset + TABLE_SEPARATOR_WIDTH);
+		self.Background:SetWidth(totalWidth);
+		self.Background:ClearAllPoints();
+		self.Background:SetPoint("TOPLEFT", leftPadding, 0);
+		self.Background:SetColorTexture(TABLE_BORDER_COLOR:GetRGBA());
+
+		self:SetHeight(yOffset + topPadding + bottomPadding + TABLE_SEPARATOR_WIDTH * 2);
 	end
-
-	local totalWidth = width - scalableSpace;
-	self.Background:SetHeight(yOffset + TABLE_SEPARATOR_WIDTH);
-	self.Background:SetWidth(totalWidth);
-	self.Background:ClearAllPoints();
-	self.Background:SetPoint("TOPLEFT", leftPadding, 0);
-	self.Background:SetColorTexture(TABLE_BORDER_COLOR:GetRGBA());
-
-	self:SetHeight(yOffset + topPadding + bottomPadding + TABLE_SEPARATOR_WIDTH * 2);
 end
 
-
-
+--------------------------------
+-- SystemButton
+--------------------------------
 
 APII_SystemButtonMixin = CreateFromMixins(CallbackRegistryMixin);
 
@@ -1933,287 +1963,294 @@ do
 	end
 end
 
+--------------------------------
+-- Content Block Data Manager
+--------------------------------
+
 APII_ContentBlockDataManagerMixin = {};
 
-local LEFT_PADDING_DEFAULT = 40;
-local LEFT_PADDING_INDENTED = 50;
-local LEFT_PADDING_COPYSTRING = 38;
-local RIGHT_PADDING_DEFAULT = 40;
-local BOTTOM_PADDING_DEFAULT = 14;
-local BOTTOM_PADDING_NEWLINE = 4;
-local BOTTOM_PADDING_TITLE = 6;
+do
+	local LEFT_PADDING_DEFAULT = 40;
+	local LEFT_PADDING_INDENTED = 50;
+	local RIGHT_PADDING_DEFAULT = 40;
+	local BOTTOM_PADDING_DEFAULT = 14;
+	local BOTTOM_PADDING_NEWLINE = 4;
+	local BOTTOM_PADDING_TITLE = 6;
 
-local function AddFieldRowToTableData(tableData, index, field)
-	tableData:StartRow();
+	local function AddFieldRowToTableData(tableData, index, field)
+		tableData:StartRow();
 
-	if (index) then
-		tableData:AddRowText(index..".");
-	end
-
-	tableData:AddRowText(field:GenerateAPILink());
-
-	local typeText = field:GetLuaType();
-	if (field.Mixin) then
-		local mixinString = string.format(" (|Hapi:mixin:%s|h%s|h)", field.Mixin, field.Mixin);
-		typeText = typeText .. APII_MIXIN_COLOR:WrapTextInColorCode(mixinString);
-	end
-	if (field:IsOptional()) then
-		if (field.Default ~= nil) then
-			local line = string.format(" (default:%s)", tostring(field.Default));
-			typeText = typeText .. APII_COMMENT_COLOR:WrapTextInColorCode(line);
-		else
-			typeText = typeText .. APII_COMMENT_COLOR:WrapTextInColorCode(" (optional)");
-		end
-	end
-	tableData:AddRowText(typeText);
-
-	if (field.Documentation) then
-		local documentationString = table.concat(field.Documentation, " ");
-		documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
-		tableData:AddRowText(documentationString);
-	end
-
-	local stride = field:GetStrideIndex() or 0;
-	if (stride > 0) then
-		tableData:SetRowStride(stride);
-	end
-end
-
-function APII_ContentBlockDataManagerMixin:Init(apiInfo)
-	self.dataBlocks = {};
-
-	local isConstant = apiInfo.Type == "Constants";
-
-	do
-		local text = PART_OF_NO_SYSTEM;
-		if (apiInfo.System and not apiInfo.System.isFake) then
-			text = string.format(PART_OF_SYSTEM, apiInfo.System:GenerateAPILink());
-		end
-		self:AddBasicBlock(APII_SYSTEM_SOURCE_COLOR:WrapTextInColorCode(text));
-	end
-
-	do
-		local clipboardString = apiInfo.LiteralName and apiInfo.LiteralName or apiInfo:GetClipboardString();
-
-		if (isConstant) then
-			clipboardString = "Constants." .. clipboardString;
+		if (index) then
+			tableData:AddRowText(index..".");
 		end
 
-		self:AddCopyStringBlock(clipboardString);
+		tableData:AddRowText(field:GenerateAPILink());
+
+		local typeText = field:GetLuaType();
+		if (field.Mixin) then
+			local mixinString = string.format(" (|Hapi:mixin:%s|h%s|h)", field.Mixin, field.Mixin);
+			typeText = typeText .. APII_MIXIN_COLOR:WrapTextInColorCode(mixinString);
+		end
+		if (field:IsOptional()) then
+			if (field.Default ~= nil) then
+				local line = string.format(" (default:%s)", tostring(field.Default));
+				typeText = typeText .. APII_COMMENT_COLOR:WrapTextInColorCode(line);
+			else
+				typeText = typeText .. APII_COMMENT_COLOR:WrapTextInColorCode(" (optional)");
+			end
+		end
+		tableData:AddRowText(typeText);
+
+		if (field.Documentation) then
+			local documentationString = table.concat(field.Documentation, " ");
+			documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
+			tableData:AddRowText(documentationString);
+		end
+
+		local stride = field:GetStrideIndex() or 0;
+		if (stride > 0) then
+			tableData:SetRowStride(stride);
+		end
 	end
 
-	local dataType = apiInfo:GetType();
-	if (dataType == "function") then
-		self:AddFunctionArguments("Arguments", apiInfo.Arguments);
-		self:AddFunctionArguments("Returns", apiInfo.Returns);
+	function APII_ContentBlockDataManagerMixin:Init(apiInfo)
+		self.dataBlocks = {};
 
-	elseif (dataType == "table" and (apiInfo.Fields or apiInfo.Values)) then
-		if (apiInfo.Fields and #apiInfo.Fields > 0) then
-			if (apiInfo.Type == "Enumeration") then
-				self:AddFieldBlock("Num Values: " .. apiInfo.NumValues);
-				self:AddFieldBlock("Min Value: " .. apiInfo.MinValue);
-				self:AddFieldBlock("Max Value: " .. apiInfo.MaxValue, true);
+		local isConstant = apiInfo.Type == "Constants";
+
+		do
+			local text = PART_OF_NO_SYSTEM;
+			if (apiInfo.System and not apiInfo.System.isFake) then
+				text = string.format(PART_OF_SYSTEM, apiInfo.System:GenerateAPILink());
+			end
+			self:AddBasicBlock(APII_SYSTEM_SOURCE_COLOR:WrapTextInColorCode(text));
+		end
+
+		do
+			local clipboardString = apiInfo.LiteralName and apiInfo.LiteralName or apiInfo:GetClipboardString();
+
+			if (isConstant) then
+				clipboardString = "Constants." .. clipboardString;
+			end
+
+			self:AddCopyStringBlock(clipboardString);
+		end
+
+		local dataType = apiInfo:GetType();
+		if (dataType == "function") then
+			self:AddFunctionArguments("Arguments", apiInfo.Arguments);
+			self:AddFunctionArguments("Returns", apiInfo.Returns);
+
+		elseif (dataType == "table" and (apiInfo.Fields or apiInfo.Values)) then
+			if (apiInfo.Fields and #apiInfo.Fields > 0) then
+				if (apiInfo.Type == "Enumeration") then
+					self:AddFieldBlock("Num Values: " .. apiInfo.NumValues);
+					self:AddFieldBlock("Min Value: " .. apiInfo.MinValue);
+					self:AddFieldBlock("Max Value: " .. apiInfo.MaxValue, true);
+					self:AddTitleBlock("Values");
+
+					local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
+					local hasNote = false;
+					for i, fieldInfo in ipairs(apiInfo.Fields) do
+						tableData:StartRow();
+						tableData:AddRowText(fieldInfo:GetLuaType());
+						tableData:AddRowText(fieldInfo:GenerateAPILink());
+						if (fieldInfo.Documentation) then
+							hasNote = true;
+							local documentationString = table.concat(fieldInfo.Documentation, " ");
+							documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
+							tableData:AddRowText(documentationString);
+						end
+					end
+
+					tableData:StartRow(APII_TableContstants.IsHeader);
+					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
+					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
+					if (hasNote) then
+						tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
+					end
+					self:AddTableDataBlock(tableData);
+				else
+					self:AddTitleBlock("Fields");
+
+					local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
+					local hasNote = false;
+					for i, fieldInfo in ipairs(apiInfo.Fields) do
+						AddFieldRowToTableData(tableData, nil, fieldInfo);
+						hasNote = hasNote or fieldInfo.Documentation ~= nil;
+					end
+
+					tableData:StartRow(APII_TableContstants.IsHeader);
+					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
+					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
+					if (hasNote) then
+						tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
+					end
+					self:AddTableDataBlock(tableData);
+				end
+			end
+
+			if (apiInfo.Values and #apiInfo.Values > 0) then
 				self:AddTitleBlock("Values");
 
 				local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-				local hasNote = false;
-				for i, fieldInfo in ipairs(apiInfo.Fields) do
+
+				for i, valueInfo in ipairs(apiInfo.Values) do
 					tableData:StartRow();
-					tableData:AddRowText(fieldInfo:GetLuaType());
-					tableData:AddRowText(fieldInfo:GenerateAPILink());
-					if (fieldInfo.Documentation) then
-						hasNote = true;
-						local documentationString = table.concat(fieldInfo.Documentation, " ");
-						documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
-						tableData:AddRowText(documentationString);
-					end
+					tableData:AddRowText(valueInfo:GenerateAPILink());
+					tableData:AddRowText(valueInfo:GetValue());
+					tableData:AddRowText(valueInfo:GetLuaType());
 				end
 
 				tableData:StartRow(APII_TableContstants.IsHeader);
+				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
 				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
-				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
-				if (hasNote) then
-					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
-				end
-				self:AddTableDataBlock(tableData);
-			else
-				self:AddTitleBlock("Fields");
-
-				local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-				local hasNote = false;
-				for i, fieldInfo in ipairs(apiInfo.Fields) do
-					AddFieldRowToTableData(tableData, nil, fieldInfo);
-					hasNote = hasNote or fieldInfo.Documentation ~= nil;
-				end
-
-				tableData:StartRow(APII_TableContstants.IsHeader);
-				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
 				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
-				if (hasNote) then
-					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
-				end
 				self:AddTableDataBlock(tableData);
 			end
-		end
 
-		if (apiInfo.Values and #apiInfo.Values > 0) then
-			self:AddTitleBlock("Values");
+		elseif (dataType == "event" and apiInfo.Payload) then
+			self:AddTitleBlock("Payload");
 
 			local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-
-			for i, valueInfo in ipairs(apiInfo.Values) do
-				tableData:StartRow();
-				tableData:AddRowText(valueInfo:GenerateAPILink());
-				tableData:AddRowText(valueInfo:GetValue());
-				tableData:AddRowText(valueInfo:GetLuaType());
+			local hasNote = false;
+			for i, payloadInfo in ipairs(apiInfo.Payload) do
+				AddFieldRowToTableData(tableData, i, payloadInfo);
+				hasNote = hasNote or payloadInfo.Documentation ~= nil;
 			end
 
 			tableData:StartRow(APII_TableContstants.IsHeader);
+			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
 			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
-			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
 			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
+			if (hasNote) then
+				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
+			end
 			self:AddTableDataBlock(tableData);
 		end
 
-	elseif (dataType == "event" and apiInfo.Payload) then
-		self:AddTitleBlock("Payload");
+		if (apiInfo.Documentation) then
+			self:AddTitleBlock("Notes");
+			for i, documentation in ipairs(apiInfo.Documentation) do
+				if (DOCUMENTATION_TO_COLOR_RED[documentation]) then
+					documentation = APII_NO_PUBLIC_COLOR:WrapTextInColorCode(documentation);
+				end
+				self:AddFieldBlock(documentation, i == #apiInfo.Documentation);
+			end
+		end
+
+		-- if (dataType == "function") then
+		-- 	self:AddTitleBlock("Wiki URL");
+		-- 	local url = "https://warcraft.wiki.gg/wiki/API_";
+		-- 	if (apiInfo.System and apiInfo.System.Namespace) then
+		-- 		url = url .. apiInfo.System.Namespace .. ".";
+		-- 	end
+		-- 	url = url .. apiInfo.Name;
+		-- 	self:AddIndentedBlock(url);
+		-- end
+	end
+
+	function APII_ContentBlockDataManagerMixin:EnumerateData()
+		return ipairs(self.dataBlocks);
+	end
+
+	function APII_ContentBlockDataManagerMixin:AddBasicBlock(text, font)
+		local block = {};
+		block.template = "APII_TextBlockTemplate";
+		block.textString = text;
+		block.font = font or GetFont(TextScaleEnum.Normal);
+		block.leftPadding = LEFT_PADDING_DEFAULT;
+		block.rightPadding = RIGHT_PADDING_DEFAULT;
+		block.bottomPadding = BOTTOM_PADDING_DEFAULT;
+		tinsert(self.dataBlocks, block);
+		return block;
+	end
+
+	function APII_ContentBlockDataManagerMixin:AddIndentedBlock(text)
+		local block = self:AddBasicBlock(text);
+		block.leftPadding = LEFT_PADDING_INDENTED;
+		return block;
+	end
+
+	function APII_ContentBlockDataManagerMixin:AddFieldBlock(text, isLast)
+		local block = self:AddIndentedBlock(text);
+		if (not isLast) then
+			block.bottomPadding = BOTTOM_PADDING_NEWLINE;
+		end
+		return block;
+	end
+
+	function APII_ContentBlockDataManagerMixin:AddTitleBlock(text)
+		local block = self:AddBasicBlock(text, GetFont(TextScaleEnum.Big))
+		block.bottomPadding = BOTTOM_PADDING_TITLE;
+		return block;
+	end
+
+	function APII_ContentBlockDataManagerMixin:AddCopyStringBlock(text)
+		local block = self:AddBasicBlock(text);
+		block.template = "APII_TextBlockCopyStringTemplate";
+		return block;
+	end
+
+	function APII_ContentBlockDataManagerMixin:AddTableBlock(text, tableContent, index, isLast)
+		local block = self:AddBasicBlock(text);
+		block.template = "APII_TextBlockTableTemplate";
+		block.tableContent = tableContent;
+		block.index = index;
+		block.leftPadding = LEFT_PADDING_INDENTED;
+		if (not isLast) then
+			block.bottomPadding = 0;
+		end
+		return block;
+	end
+
+	function APII_ContentBlockDataManagerMixin:AddTableDataBlock(tableData)
+		local block = self:AddBasicBlock();
+		block.template = "APII_TextBlockTableTemplate";
+		block.tableData = tableData;
+		block.leftPadding = LEFT_PADDING_INDENTED;
+		return block;
+	end
+
+	function APII_ContentBlockDataManagerMixin:AddFunctionArguments(label, argumentTable)
+		if (not argumentTable or #argumentTable == 0) then return; end
+		self:AddTitleBlock(label);
 
 		local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-		local hasNote = false;
-		for i, payloadInfo in ipairs(apiInfo.Payload) do
-			AddFieldRowToTableData(tableData, i, payloadInfo);
-			hasNote = hasNote or payloadInfo.Documentation ~= nil;
+		local hasNote = false
+		local variableStride = 0;
+		for i, argumentInfo in ipairs(argumentTable) do
+			local stride = argumentInfo:GetStrideIndex();
+			variableStride = stride or variableStride;
+			hasNote = hasNote or argumentInfo.Documentation ~= nil;
+			AddFieldRowToTableData(tableData, i, argumentInfo);
+		end
+
+		if (variableStride > 0) then
+			tableData:StartRow();
+			tableData:SetRowStride(variableStride);
+			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode("..."));
+			local strideText = VARIABLE_REPEATS;
+			if (variableStride > 1) then
+				strideText = string.format(VARIABLE_REPEATS_MULTIPLE, variableStride);
+			end
+			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode(strideText), 5);
 		end
 
 		tableData:StartRow(APII_TableContstants.IsHeader);
 		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
+		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Param"));
 		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
 		if (hasNote) then
 			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
 		end
 		self:AddTableDataBlock(tableData);
 	end
-
-	if (apiInfo.Documentation) then
-		self:AddTitleBlock("Notes");
-		for i, documentation in ipairs(apiInfo.Documentation) do
-			if (DOCUMENTATION_TO_COLOR_RED[documentation]) then
-				documentation = APII_NO_PUBLIC_COLOR:WrapTextInColorCode(documentation);
-			end
-			self:AddFieldBlock(documentation, i == #apiInfo.Documentation);
-		end
-	end
-
-	-- if (dataType == "function") then
-	-- 	self:AddTitleBlock("Wiki URL");
-	-- 	local url = "https://warcraft.wiki.gg/wiki/API_";
-	-- 	if (apiInfo.System and apiInfo.System.Namespace) then
-	-- 		url = url .. apiInfo.System.Namespace .. ".";
-	-- 	end
-	-- 	url = url .. apiInfo.Name;
-	-- 	self:AddIndentedBlock(url);
-	-- end
 end
 
-function APII_ContentBlockDataManagerMixin:EnumerateData()
-	return ipairs(self.dataBlocks);
-end
-
-function APII_ContentBlockDataManagerMixin:AddBasicBlock(text, font)
-	local block = {};
-	block.template = "APII_TextBlockTemplate";
-	block.textString = text;
-	block.font = font or GetFont("normal")
-	block.leftPadding = LEFT_PADDING_DEFAULT;
-	block.rightPadding = RIGHT_PADDING_DEFAULT;
-	block.bottomPadding = BOTTOM_PADDING_DEFAULT;
-	tinsert(self.dataBlocks, block);
-	return block;
-end
-
-function APII_ContentBlockDataManagerMixin:AddIndentedBlock(text)
-	local block = self:AddBasicBlock(text);
-	block.leftPadding = LEFT_PADDING_INDENTED;
-	return block;
-end
-
-function APII_ContentBlockDataManagerMixin:AddFieldBlock(text, isLast)
-	local block = self:AddIndentedBlock(text);
-	if (not isLast) then
-		block.bottomPadding = BOTTOM_PADDING_NEWLINE;
-	end
-	return block;
-end
-
-function APII_ContentBlockDataManagerMixin:AddTitleBlock(text)
-	local block = self:AddBasicBlock(text, GetFont("big"))
-	block.bottomPadding = BOTTOM_PADDING_TITLE;
-	return block;
-end
-
-function APII_ContentBlockDataManagerMixin:AddCopyStringBlock(text)
-	local block = self:AddBasicBlock(text);
-	block.template = "APII_TextBlockCopyStringTemplate";
-	block.leftPadding = LEFT_PADDING_COPYSTRING;
-	return block;
-end
-
-function APII_ContentBlockDataManagerMixin:AddTableBlock(text, tableContent, index, isLast)
-	local block = self:AddBasicBlock(text);
-	block.template = "APII_TextBlockTableTemplate";
-	block.tableContent = tableContent;
-	block.index = index;
-	block.leftPadding = LEFT_PADDING_INDENTED;
-	if (not isLast) then
-		block.bottomPadding = 0;
-	end
-	return block;
-end
-
-function APII_ContentBlockDataManagerMixin:AddTableDataBlock(tableData)
-	local block = self:AddBasicBlock();
-	block.template = "APII_TextBlockTableTemplate";
-	block.tableData = tableData;
-	block.leftPadding = LEFT_PADDING_INDENTED;
-	return block;
-end
-
-function APII_ContentBlockDataManagerMixin:AddFunctionArguments(label, argumentTable)
-	if (not argumentTable or #argumentTable == 0) then return; end
-	self:AddTitleBlock(label);
-
-	local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-	local hasNote = false
-	local variableStride = 0;
-	for i, argumentInfo in ipairs(argumentTable) do
-		local stride = argumentInfo:GetStrideIndex();
-		variableStride = stride or variableStride;
-		hasNote = hasNote or argumentInfo.Documentation ~= nil;
-		AddFieldRowToTableData(tableData, i, argumentInfo);
-	end
-
-	if (variableStride > 0) then
-		tableData:StartRow();
-		tableData:SetRowStride(variableStride);
-		tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode("..."));
-		local strideText = VARIABLE_REPEATS;
-		if (variableStride > 1) then
-			strideText = string.format(VARIABLE_REPEATS_MULTIPLE, variableStride);
-		end
-		tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode(strideText), 5);
-	end
-
-	tableData:StartRow(APII_TableContstants.IsHeader);
-	tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
-	tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Param"));
-	tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
-	if (hasNote) then
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
-	end
-	self:AddTableDataBlock(tableData);
-end
-
+--------------------------------
+-- Content Block Manager
+--------------------------------
 
 APII_ContentBlockManagerMixin = {};
 
@@ -2275,7 +2312,9 @@ function APII_ContentBlockManagerMixin:DoForEveryActiveBlock(func, ...)
 	end
 end
 
-
+--------------------------------
+-- System Content Mixin
+--------------------------------
 
 APII_SystemContentMixin = CreateFromMixins(CallbackRegistryMixin);
 
@@ -2358,6 +2397,9 @@ function APII_SystemContentMixin:Initialize(data, expanded)
 	self:SetHeight(totalHeight);
 end
 
+--------------------------------
+-- Core mixin
+--------------------------------
 
 APII_CoreMixin = {};
 
