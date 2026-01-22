@@ -68,7 +68,8 @@
         "Lerp",
         "TextureKitConstants",
         "PixelUtil",
-        "Round"
+        "Round",
+        "CreateColorFromRGBHexString"
     ],
     "Lua.diagnostics.disable": [
         "undefined-field",

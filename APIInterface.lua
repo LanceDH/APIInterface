@@ -30,10 +30,26 @@ local HISTORY_FORWARDS_TT = "<Hold Shift to go to the very front>";
 local TOGGLE_HYPERLINKS = "Toggle Hyperlinks";
 local TOGGLE_HYPERLINKS_TT = "Make API text clickable to hyperlink to other API.";
 local TOGGLE_HYPERLINKS_TT_SHIFT = "<Hold Shift to temporary enable hyperlinks>";
+local UNDOCUMENTED_LABEL = "apii_IsUndocumented";
+local APII_UNDOCUMENTED_MESSAGE = "This function is not officially documented but exists in this namespace.";
 
+local DOCUMENTATION_TO_COLOR_RED = {
+	["This function does nothing in public clients"] = true;
+	["Unavailable in public builds"] = true;
+	[APII_UNDOCUMENTED_MESSAGE] = true;
+}
+
+local APII_COMMENT_COLOR = LIGHTGRAY_FONT_COLOR;
+local APII_SYSTEM_SOURCE_COLOR = LIGHTGRAY_FONT_COLOR;
+local APII_NO_PUBLIC_COLOR = CreateColor(1, .2, .2);
+local APII_MIXIN_COLOR = BATTLENET_FONT_COLOR;
+local APII_NAMESPACE_COLOR = DISABLED_FONT_COLOR;
+local APII_VARIABLE_FIELD_COLOR = LIGHTYELLOW_FONT_COLOR;
+local APII_FIELDS_COLOR = NORMAL_FONT_COLOR;-- overwitten with actual color once API gets loaded
 
 local GlobalSearchTypes = EnumUtil.MakeEnum("Functions", "Tables", "Frames", "Strings", "Values");
-local GlobalSearchTypesTranslation = EnumUtil.GenerateNameTranslation(GlobalSearchTypes)
+local GlobalSearchTypesTranslation = EnumUtil.GenerateNameTranslation(GlobalSearchTypes);
+local SecretAspectTranslator = EnumUtil.GenerateNameTranslation(Enum.SecretAspect);
 
 
 local APII_FilterType = EnumUtil.MakeEnum("Function", "Event", "CallbackType", "Constants", "Enumeration", "Structure", "Undocumented");
@@ -102,24 +118,10 @@ local function dprint(...)
 	print(...);
 end
 
-local APII_UNDOCUMENTED_MESSAGE = "This function is not officially documented but exists in this namespace.";
-local DOCUMENTATION_TO_COLOR_RED = {
-	["This function does nothing in public clients"] = true;
-	["Unavailable in public builds"] = true;
-	[APII_UNDOCUMENTED_MESSAGE] = true;
-}
-
-local APII_COMMENT_COLOR = LIGHTGRAY_FONT_COLOR;
-local APII_SYSTEM_SOURCE_COLOR = LIGHTGRAY_FONT_COLOR;
-local APII_NO_PUBLIC_COLOR = CreateColor(1, .2, .2);
-local APII_MIXIN_COLOR = BATTLENET_FONT_COLOR;
-local APII_NAMESPACE_COLOR = DISABLED_FONT_COLOR;
-local APII_VARIABLE_FIELD_COLOR = LIGHTYELLOW_FONT_COLOR;
-
 local APII_FrameFactory = CreateFrameFactory();
 
 local function InfoPassesFilters(apiInfo)
-	if (apiInfo.isUndocumented and not APII.db.global.filters["Undocumented"]) then
+	if (apiInfo[UNDOCUMENTED_LABEL] and not APII.db.global.filters["Undocumented"]) then
 		return false;
 	end
 
@@ -169,7 +171,7 @@ local function AlterOfficialDocumentation()
 			result = constant[self:GetName()];
 		end
 
-		return result or "unknown";
+		return result == nil and "unknown" or result;
 	end
 
 	function APII_ValueAPIMixin:GetSingleOutputLine()
@@ -301,11 +303,9 @@ local function AlterOfficialDocumentation()
 			end
 
 			local madeChange = false;
-			--local count = 0;
 			for name in pairs(undocumented) do
-				
 				local newAPI = CreateFromMixins(APII_UndocumentedAPIMixin);
-				newAPI.isUndocumented = true;
+				newAPI[UNDOCUMENTED_LABEL] = true;
 				newAPI.Name = name;
 				newAPI.Type = "Function";
 				newAPI.System = system;
@@ -1159,23 +1159,37 @@ do
 	local BOTTOM_PADDING_NEWLINE = 4;
 	local BOTTOM_PADDING_TITLE = 6;
 
-	local function AddFieldRowToTableData(tableData, index, field)
+	local function AddFieldSecretToTableData(tableData, fieldInfo)
+		local line = "";
+		if (fieldInfo.ConditionalSecret) then
+			line = APII_COMMENT_COLOR:WrapTextInColorCode("ConditionalSecret");
+		elseif (fieldInfo.NeverSecret) then
+			line = APII_COMMENT_COLOR:WrapTextInColorCode("NeverSecret");
+		elseif (fieldInfo.ConditionalSecretContents) then
+			line = APII_COMMENT_COLOR:WrapTextInColorCode("ConditionalSecretContents");
+		elseif ( fieldInfo.NeverSecretContents) then
+			line = APII_COMMENT_COLOR:WrapTextInColorCode("NeverSecretContents");
+		end
+		tableData:AddRowText(line);
+	end
+
+	local function AddFieldRowToTableData(tableData, index, fieldInfo, hasSecret)
 		tableData:StartRow();
 
 		if (index) then
 			tableData:AddRowText(index..".");
 		end
 
-		tableData:AddRowText(field:GenerateAPILink());
+		tableData:AddRowText(fieldInfo:GenerateAPILink());
 
-		local typeText = field:GetLuaType();
-		if (field.Mixin) then
-			local mixinString = string.format(" (|Hapi:mixin:%s|h%s|h)", field.Mixin, field.Mixin);
+		local typeText = fieldInfo:GetLuaType();
+		if (fieldInfo.Mixin) then
+			local mixinString = string.format(" (|Hapi:mixin:%s|h%s|h)", fieldInfo.Mixin, fieldInfo.Mixin);
 			typeText = typeText .. APII_MIXIN_COLOR:WrapTextInColorCode(mixinString);
 		end
-		if (field:IsOptional()) then
-			if (field.Default ~= nil) then
-				local line = string.format(" (default:%s)", tostring(field.Default));
+		if (fieldInfo:IsOptional()) then
+			if (fieldInfo.Default ~= nil) then
+				local line = string.format(" (default:%s)", tostring(fieldInfo.Default));
 				typeText = typeText .. APII_COMMENT_COLOR:WrapTextInColorCode(line);
 			else
 				typeText = typeText .. APII_COMMENT_COLOR:WrapTextInColorCode(" (optional)");
@@ -1183,16 +1197,78 @@ do
 		end
 		tableData:AddRowText(typeText);
 
-		if (field.Documentation) then
-			local documentationString = table.concat(field.Documentation, " ");
+		if (hasSecret) then
+			AddFieldSecretToTableData(tableData, fieldInfo);
+		end
+
+		if (fieldInfo.Documentation) then
+			local documentationString = table.concat(fieldInfo.Documentation, " ");
 			documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
 			tableData:AddRowText(documentationString);
 		end
 
-		local stride = field:GetStrideIndex() or 0;
+		local stride = fieldInfo:GetStrideIndex() or 0;
 		if (stride > 0) then
 			tableData:SetRowStride(stride);
 		end
+	end
+
+	local function GenerateSecretAspectString(aspectTable)
+		if (not aspectTable) then return; end
+		
+		local secretAspectAPI = APIDocumentation:FindAPIByName("table", "SecretAspect");
+		local labels = {};
+		for k, v in ipairs(aspectTable) do
+			local label = "Enum.SecretAspect." .. SecretAspectTranslator(v);
+			label = string.format("|cff%s|Hapi:%s:%s:%s|h%s|h|r", secretAspectAPI:GetLinkHexColor(), secretAspectAPI:GetType(), secretAspectAPI:GetName(), secretAspectAPI:GetParentName(), label);
+			tinsert(labels, label);
+		end
+		return table.concat(labels, ", ");
+	end
+
+	local function CreateFieldsTableData(fieldsTable, fieldFunc, defaultLabels)
+		local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
+		defaultLabels = defaultLabels or {};
+		local hasNote = false;
+		local hasSecret = false;
+		for i, fieldInfo in ipairs(fieldsTable) do
+			hasNote = hasNote or fieldInfo.Documentation ~= nil;
+			hasSecret = hasSecret or fieldInfo.ConditionalSecret or fieldInfo.NeverSecret or fieldInfo.ConditionalSecretContents or fieldInfo.NeverSecretContents;
+		end
+
+		local variableStride = 0;
+		for index, fieldInfo in ipairs(fieldsTable) do
+			local stride = fieldInfo.GetStrideIndex and fieldInfo:GetStrideIndex() or 0;
+			variableStride = stride or variableStride;
+			fieldFunc(index, fieldInfo, tableData, hasSecret);
+		end
+
+		if (variableStride > 0) then
+			tableData:StartRow();
+			tableData:SetRowStride(variableStride);
+			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode("..."));
+			local strideText = VARIABLE_REPEATS;
+			if (variableStride > 1) then
+				strideText = string.format(VARIABLE_REPEATS_MULTIPLE, variableStride);
+			end
+			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode(strideText), 5);
+		end
+
+		if (hasSecret) then
+			tinsert(defaultLabels, ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Secret"));
+		end
+		if (hasNote) then
+			tinsert(defaultLabels, ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
+		end
+
+		if (#defaultLabels > 0) then
+			tableData:StartRow(APII_TableContstants.IsHeader);
+			for k, label in ipairs(defaultLabels) do
+				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode(label));
+			end
+		end
+
+		return tableData;
 	end
 
 	function APII_ContentBlockDataManagerMixin:Init(apiInfo)
@@ -1231,43 +1307,32 @@ do
 					self:AddFieldBlock("Max Value: " .. apiInfo.MaxValue, true);
 					self:AddTitleBlock("Values");
 
-					local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-					local hasNote = false;
-					for i, fieldInfo in ipairs(apiInfo.Fields) do
+					local function fieldsFunc(index, fieldInfo, tableData, hasSecret)
 						tableData:StartRow();
 						tableData:AddRowText(fieldInfo:GetLuaType());
 						tableData:AddRowText(fieldInfo:GenerateAPILink());
+						if (hasSecret) then
+							AddFieldSecretToTableData(tableData, fieldInfo);
+						end
 						if (fieldInfo.Documentation) then
-							hasNote = true;
 							local documentationString = table.concat(fieldInfo.Documentation, " ");
 							documentationString = APII_COMMENT_COLOR:WrapTextInColorCode(documentationString);
 							tableData:AddRowText(documentationString);
 						end
 					end
 
-					tableData:StartRow(APII_TableContstants.IsHeader);
-					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
-					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
-					if (hasNote) then
-						tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
-					end
+					local tableData = CreateFieldsTableData(apiInfo.Fields, fieldsFunc, {"Value", "Name"});
+
 					self:AddTableDataBlock(tableData);
 				else
 					self:AddTitleBlock("Fields");
 
-					local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-					local hasNote = false;
-					for i, fieldInfo in ipairs(apiInfo.Fields) do
-						AddFieldRowToTableData(tableData, nil, fieldInfo);
-						hasNote = hasNote or fieldInfo.Documentation ~= nil;
+					local function fieldsFunc(index, fieldInfo, tableData, hasSecret)
+						AddFieldRowToTableData(tableData, nil, fieldInfo, hasSecret);
 					end
 
-					tableData:StartRow(APII_TableContstants.IsHeader);
-					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
-					tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
-					if (hasNote) then
-						tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
-					end
+					local tableData = CreateFieldsTableData(apiInfo.Fields, fieldsFunc, {"Name", "Type"});
+
 					self:AddTableDataBlock(tableData);
 				end
 			end
@@ -1275,40 +1340,90 @@ do
 			if (apiInfo.Values and #apiInfo.Values > 0) then
 				self:AddTitleBlock("Values");
 
-				local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-
-				for i, valueInfo in ipairs(apiInfo.Values) do
+				local function fieldsFunc(index, fieldInfo, tableData, hasSecret)
 					tableData:StartRow();
-					tableData:AddRowText(valueInfo:GenerateAPILink());
-					tableData:AddRowText(valueInfo:GetValue());
-					tableData:AddRowText(valueInfo:GetLuaType());
+					tableData:AddRowText(fieldInfo:GenerateAPILink());
+					local value = tostring(fieldInfo:GetValue());
+					tableData:AddRowText(value);
+					tableData:AddRowText(fieldInfo:GetLuaType());
 				end
 
-				tableData:StartRow(APII_TableContstants.IsHeader);
-				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
-				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Value"));
-				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
+				local tableData = CreateFieldsTableData(apiInfo.Values, fieldsFunc, { "Name", "Value", "Type" });
+
 				self:AddTableDataBlock(tableData);
 			end
 
 		elseif (dataType == "event" and apiInfo.Payload) then
 			self:AddTitleBlock("Payload");
 
-			local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-			local hasNote = false;
-			for i, payloadInfo in ipairs(apiInfo.Payload) do
-				AddFieldRowToTableData(tableData, i, payloadInfo);
-				hasNote = hasNote or payloadInfo.Documentation ~= nil;
+			local function fieldsFunc(index, fieldInfo, tableData, hasSecret)
+				AddFieldRowToTableData(tableData, index, fieldInfo, hasSecret);
 			end
 
-			tableData:StartRow(APII_TableContstants.IsHeader);
-			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
-			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Name"));
-			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
-			if (hasNote) then
-				tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
-			end
+			local tableData = CreateFieldsTableData(apiInfo.Payload, fieldsFunc, { "#", "Name", "Type" });
+
 			self:AddTableDataBlock(tableData);
+		end
+
+		do
+			local metaTable = {};
+			local predicateLabels = {};
+
+			for key, value in pairs(apiInfo) do
+				if (type(value) == "boolean" and key ~= UNDOCUMENTED_LABEL) then
+					local label = key;
+					if (not value) then
+						label = label .. APII_COMMENT_COLOR:WrapTextInColorCode(" (false)");
+					end
+					tinsert(predicateLabels, label);
+				end
+			end
+
+			if (#predicateLabels > 0) then
+				local t = {
+					APII_FIELDS_COLOR:WrapTextInColorCode("Predicates");
+					table.concat(predicateLabels, ", ");
+				}
+				tinsert(metaTable, t);
+			end
+
+			if (apiInfo.SecretArgumentsAddAspect) then
+				local t = {
+					APII_FIELDS_COLOR:WrapTextInColorCode("SecretArgumentsAddAspect");
+					GenerateSecretAspectString(apiInfo.SecretArgumentsAddAspect);
+				}
+				tinsert(metaTable, t);
+			end
+
+			if (apiInfo.SecretReturnsForAspect) then
+				local t = {
+					APII_FIELDS_COLOR:WrapTextInColorCode("SecretReturnsForAspect");
+					GenerateSecretAspectString(apiInfo.SecretArguments);
+				}
+				tinsert(metaTable, t);
+			end
+
+			if (apiInfo.SecretArguments) then
+				local t = {
+					APII_FIELDS_COLOR:WrapTextInColorCode("SecretArguments");
+					apiInfo.SecretArguments;
+				}
+				tinsert(metaTable, t);
+			end
+
+			if (#metaTable > 0) then
+				self:AddTitleBlock("Metadata");
+
+				local function fieldsFunc(index, fieldInfo, tableData, hasSecret)
+					tableData:StartRow();
+					for k, v in ipairs(fieldInfo) do
+						tableData:AddRowText(v);
+					end
+				end
+
+				local tableData = CreateFieldsTableData(metaTable, fieldsFunc);
+				self:AddTableDataBlock(tableData);
+			end
 		end
 
 		if (apiInfo.Documentation) then
@@ -1398,34 +1513,13 @@ do
 		if (not argumentTable or #argumentTable == 0) then return; end
 		self:AddTitleBlock(label);
 
-		local tableData = CreateAndInitFromMixin(APII_TableContentMixin);
-		local hasNote = false
-		local variableStride = 0;
-		for i, argumentInfo in ipairs(argumentTable) do
-			local stride = argumentInfo:GetStrideIndex();
-			variableStride = stride or variableStride;
-			hasNote = hasNote or argumentInfo.Documentation ~= nil;
-			AddFieldRowToTableData(tableData, i, argumentInfo);
+		local function fieldsFunc(index, fieldInfo, tableData, hasSecret)
+			AddFieldRowToTableData(tableData, index, fieldInfo, hasSecret);
 		end
 
-		if (variableStride > 0) then
-			tableData:StartRow();
-			tableData:SetRowStride(variableStride);
-			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode("..."));
-			local strideText = VARIABLE_REPEATS;
-			if (variableStride > 1) then
-				strideText = string.format(VARIABLE_REPEATS_MULTIPLE, variableStride);
-			end
-			tableData:AddRowText(APII_VARIABLE_FIELD_COLOR:WrapTextInColorCode(strideText), 5);
-		end
+		local tableData = CreateFieldsTableData(argumentTable, fieldsFunc, { "#", "Param", "Type" });
 
-		tableData:StartRow(APII_TableContstants.IsHeader);
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("#"));
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Param"));
-		tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Type"));
-		if (hasNote) then
-			tableData:AddRowText(ARENA_NAME_FONT_COLOR:WrapTextInColorCode("Note"));
-		end
+
 		self:AddTableDataBlock(tableData);
 	end
 end
@@ -1943,7 +2037,6 @@ function APII_CoreMixin:OnLoad()
 			local apiInfo = APIDocumentation:FindAPIByName(apiType, name, system);
 			dprint("here", link, apiType, name, system, apiInfo);
 
-
 			if (apiType == "mixin") then
 				dprint("Mixin", name, _G[name]);
 				local mixin = _G[name];
@@ -2275,6 +2368,8 @@ function APII_CoreMixin:OnShow()
 		if (not APIDocumentation) then
 			C_AddOns.LoadAddOn("Blizzard_APIDocumentationGenerated");
 		end
+
+		APII_FIELDS_COLOR = CreateColorFromRGBHexString(FieldsAPIMixin:GetLinkHexColor());
 
 		AlterOfficialDocumentation();
 		self:UpdateSystemsList();
