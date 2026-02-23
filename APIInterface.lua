@@ -6,6 +6,7 @@ APII = LibStub("AceAddon-3.0"):NewAddon(_addonName);
 local MIN_FRAME_WIDTH = 800;
 local MIN_FRAME_HEIGHT = 500;
 local SEARCH_CUTOFF_AMOUNT = 1000;
+local CHAT_MESSAGE_PREFIX = "APII: %s";
 local FORMAT_SEARCH_CUTOFF_CHANGED = "Search cutoff changed to %d for this session.";
 local FORMAT_SEARCH_CUTOFF = "Searched stopped after %d results. Use /apii limit x if to change the limit."
 local FORMAT_NO_RESULTS = "No \"%s\" found in _G matching \"%s\"."
@@ -72,6 +73,15 @@ function APII:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("APIIDB", APII_DefaultSavedVariables, true);
 end
 
+local function AddonPrint(message)
+	print(CHAT_MESSAGE_PREFIX:format(message));
+end
+
+local function dprint(...)
+	if true then return; end
+	print(...);
+end
+
 ----------
 -- Slash
 ----------
@@ -85,7 +95,7 @@ local function slashcmd(msg, editbox)
 		local amount = tonumber(msg:match("limit (%d+)"));
 		if (not amount or amount < 1) then return; end
 		SEARCH_CUTOFF_AMOUNT = amount;
-		print(FORMAT_SEARCH_CUTOFF_CHANGED:format(SEARCH_CUTOFF_AMOUNT));
+		AddonPrint(FORMAT_SEARCH_CUTOFF_CHANGED:format(SEARCH_CUTOFF_AMOUNT));
 	else
 		APII_Frame:RequestShow(msg);
 	end
@@ -111,11 +121,6 @@ local fontSizeTable = {
 local function GetFont(scale)
 	local category = fontSizeTable[activeTextScaleCategory];
 	return category[scale] or category[TextScaleEnum.Normal]
-end
-
-local function dprint(...)
-	if true then return; end
-	print(...);
 end
 
 local APII_FrameFactory = CreateFrameFactory();
@@ -1398,7 +1403,7 @@ do
 			if (apiInfo.SecretReturnsForAspect) then
 				local t = {
 					APII_FIELDS_COLOR:WrapTextInColorCode("SecretReturnsForAspect");
-					GenerateSecretAspectString(apiInfo.SecretArguments);
+					GenerateSecretAspectString(apiInfo.SecretReturnsForAspect);
 				}
 				tinsert(metaTable, t);
 			end
@@ -2222,7 +2227,7 @@ function APII_CoreMixin:OnLoad()
 				return keyMatched and (valueType == "number" or valueType == "boolean");
 			end
 
-			if (valueType == "table" and type(value.IsForbidden) == "function" and value:IsForbidden()) then return false; end
+			if (valueType == "table" and not canaccesstable(value)) then return false; end
 
 			if (searchType == GlobalSearchTypes.Tables) then
 				return keyMatched and valueType == "table" and value.GetDebugName == nil;
