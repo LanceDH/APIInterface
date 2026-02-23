@@ -1894,7 +1894,6 @@ do
 		self:UpdateHistoryButtons();
 	end
 end
-SlashCmdList["APIISLASH"] = slashcmd
 
 function APII_CoreMixin:StepHistory(delta)
 	if (#self.history <= 1) then return; end
@@ -2265,7 +2264,6 @@ function APII_CoreMixin:OnLoad()
 						AddonPrint(FORMAT_SEARCH_CUTOFF:format(SEARCH_CUTOFF_AMOUNT));
 						break;
 					end
-					tinsert(api.Documentation, "Constants are not officially supported. This data is an attempt at parsing the existing documentation.");
 				end
 			end;
 
@@ -2322,25 +2320,6 @@ function APII_CoreMixin:OnLoad()
 						GameTooltip_SetTitle(tooltip, description.text);
 						GameTooltip_AddNormalLine(tooltip, TT_SEARCH_VALUES);
 					end);
-			end
-
-			local madeChange = false;
-			--local count = 0;
-			for name in pairs(undocumented) do
-				
-				local newAPI = CreateFromMixins(APII_UndocumentedAPIMixin);
-				newAPI.isUndocumented = true;
-				newAPI.Name = name;
-				newAPI.Type = "Function";
-				newAPI.System = system;
-				newAPI.Documentation = { APII_UNDOCUMENTED_MESSAGE; };
-				tinsert(system.Functions, newAPI);
-				tinsert(APIDocumentation.functions, newAPI);
-				madeChange = true;
-			end
-
-			if (madeChange) then
-				table.sort(system.Functions, FunctionListSort);
 			end
 		end
 
