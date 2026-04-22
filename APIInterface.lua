@@ -6,6 +6,7 @@ APII = LibStub("AceAddon-3.0"):NewAddon(_addonName);
 local MIN_FRAME_WIDTH = 800;
 local MIN_FRAME_HEIGHT = 500;
 local SEARCH_CUTOFF_AMOUNT = 1000;
+local SYSTEMLESS = "Systemless";
 local CHAT_MESSAGE_PREFIX = "APII: %s";
 local FORMAT_SEARCH_CUTOFF_CHANGED = "Search cutoff changed to %d for this session.";
 local FORMAT_SEARCH_CUTOFF = "Searched stopped after %d results. Use /apii limit x if to change the limit."
@@ -53,7 +54,7 @@ local GlobalSearchTypesTranslation = EnumUtil.GenerateNameTranslation(GlobalSear
 local SecretAspectTranslator = EnumUtil.GenerateNameTranslation(Enum.SecretAspect);
 
 
-local APII_FilterType = EnumUtil.MakeEnum("Function", "Event", "CallbackType", "Constants", "Enumeration", "Structure", "Undocumented");
+local APII_FilterType = EnumUtil.MakeEnum("Function", "Event", "CallbackType", "Constants", "Enumeration", "Structure", "Undocumented", "Precondition", "Secret");
 
 local APII_DefaultSavedVariables = {
 	global = {
@@ -66,11 +67,32 @@ for filterType in pairs(APII_FilterType) do
 	APII_DefaultSavedVariables.global.filters[filterType] = true;
 end
 
+local predicateDocumentation = {};
+
 function APII:OnInitialize()
 	APII.openedSystem = nil;
 	APII.openedAPIs = {};
 
 	self.db = LibStub("AceDB-3.0"):New("APIIDB", APII_DefaultSavedVariables, true);
+
+	-- We have the intercept predicate documentation when it gets loaded because nothing official actually uses it, and we can't access the generated docs
+	local function OnDocumentationTableAdded(api, documentation)
+		if(documentation.Predicates and #documentation.Predicates > 0) then
+			local name = documentation.Name or SYSTEMLESS;
+			local t = GetOrCreateTableEntry(predicateDocumentation, name);
+			for k, data in ipairs(documentation.Predicates) do
+				tinsert(t, data);
+			end
+		end
+	end
+
+	local function HookDocumentationMixin()
+		if (APIDocumentation) then
+			hooksecurefunc(APIDocumentation, "AddDocumentationTable", OnDocumentationTableAdded);
+		end
+	end
+
+	EventUtil.ContinueOnAddOnLoaded("Blizzard_APIDocumentation", HookDocumentationMixin);
 end
 
 local function AddonPrint(message)
@@ -123,6 +145,21 @@ local function GetFont(scale)
 	return category[scale] or category[TextScaleEnum.Normal]
 end
 
+local function GetSystemString(apiInfo)
+	if (apiInfo and apiInfo.System and not apiInfo.System.isFake) then
+		return string.format(PART_OF_SYSTEM, apiInfo.System:GenerateAPILink());
+	end
+	return PART_OF_NO_SYSTEM;
+end
+
+local function GetColoredAPIName(apiInfo)
+	if (not apiInfo or not apiInfo.GetLinkHexColor or not apiInfo.GetName) then
+		return "";
+	end
+
+	return string.format("|cff%s%s|r", apiInfo:GetLinkHexColor(), apiInfo:GetName());
+end
+
 local APII_FrameFactory = CreateFrameFactory();
 
 local function InfoPassesFilters(apiInfo)
@@ -139,6 +176,7 @@ local function InfoPassesFilters(apiInfo)
 end
 
 local function AlterOfficialDocumentation()
+	-- Value mixin
 	APII_ValueAPIMixin = CreateFromMixins(FieldsAPIMixin);
 
 	function APII_ValueAPIMixin:GetParentName()
@@ -198,18 +236,25 @@ local function AlterOfficialDocumentation()
 		return string.format("%s %s", self:GenerateAPILink(), valueString);
 	end
 
-	local function ReplacerMatchFunc(self, searchString)
-		local succes = self:originalMatchesSearchString(searchString);
-		if (succes) then return true; end
+	-- Add values to tables
+	do
+		local function ReplacerMatchFunc(self, searchString)
+			local succes = self:originalMatchesSearchString(searchString);
+			if (succes) then return true; end
 
-		if (self:MatchesAnyAPI(self.Values, searchString)) then
-			return true
+			if (self:MatchesAnyAPI(self.Values, searchString)) then
+				return true
+			end
+
+			if (self.Predicates) then
+				if (self:MatchesAnyAPI(self.Predicates, searchString)) then
+					return true
+				end
+			end
+
+			return false;
 		end
 
-		return false;
-	end
-
-	if (not APIDocumentation.values) then
 		for k, tableApi in ipairs(APIDocumentation.tables) do
 			if (tableApi.Values) then
 				for i, value in ipairs(tableApi.Values) do
@@ -230,7 +275,7 @@ local function AlterOfficialDocumentation()
 
 	local noSystemContent = CreateFromMixins(SystemsAPIMixin);
 	noSystemContent.isFake = true;
-	noSystemContent.Name = "Systemless";
+	noSystemContent.Name = SYSTEMLESS;
 	noSystemContent.Type = "System";
 
 	local tableKeys = {
@@ -272,6 +317,159 @@ local function AlterOfficialDocumentation()
 				end);
 			end
 		end
+	end
+
+	tinsert(APIDocumentation.systems, 1, noSystemContent);
+
+	-- Add predicates to systems
+	do
+		-- Predicate mixin
+		APII_PredicateAPIMixin = CreateFromMixins(BaseAPIMixin);
+
+		function APII_PredicateAPIMixin:GetParentName()
+			if self.Table then
+				return self.Table:GetName();
+			end
+			return "";
+		end
+
+		function APII_PredicateAPIMixin:GetType()
+			return "predicate";
+		end
+
+		function APII_PredicateAPIMixin:GetPrettyType()
+			return self.Type:lower();
+		end
+
+		function APII_PredicateAPIMixin:GetLinkHexColor()
+			return "dd88ff";
+		end
+
+		function APII_PredicateAPIMixin:MatchesSearchString(searchString)
+			if self:GetLoweredName():match(searchString) then
+				return true;
+			end
+
+			if self:MatchesAnyDocumentation(searchString) then
+				return true;
+			end
+
+			return false;
+		end
+
+		function APII_PredicateAPIMixin:TooltipFunction(tooltip)
+			if (not tooltip) then return; end
+
+			local coloredName = GetColoredAPIName(self);
+			GameTooltip_SetTitle(tooltip, coloredName, nil, false);
+
+			if (self.FailureMode) then
+				GameTooltip_AddColoredDoubleLine(tooltip, "FailureMode", self.FailureMode, NORMAL_FONT_COLOR, WHITE_FONT_COLOR);
+			end
+
+			if (self.Documentation) then
+				for k, doc in ipairs(self.Documentation) do
+					GameTooltip_AddColoredLine(tooltip, doc, WHITE_FONT_COLOR);
+				end
+			end
+		end
+
+		local function ReplacerFindAllAPIMatches(system, apiToSearchFor)
+			apiToSearchFor = apiToSearchFor:lower();
+			local matches = {
+				tables = {},
+				functions = {},
+				events = {},
+				predicates = {},
+			};
+
+			APIDocumentationMixin:AddAllMatches(system.Tables, matches.tables, apiToSearchFor);
+			APIDocumentationMixin:AddAllMatches(system.Functions, matches.functions, apiToSearchFor);
+			APIDocumentationMixin:AddAllMatches(system.Events, matches.events, apiToSearchFor);
+			if (system.Predicates) then
+				APIDocumentationMixin:AddAllMatches(system.Predicates, matches.predicates, apiToSearchFor);
+			end
+
+			-- Only return something if we matched anything
+			for name, subTable in pairs(matches) do
+				if #subTable > 0 then
+					return matches;
+				end
+			end
+
+			return nil;
+		end
+
+		local function ReplacerListAllAPI(system)
+			local allAPI = system:originalListAllAPI();
+			local shallow = true;
+			allAPI.predicates = CopyTable(system.Predicates, shallow);
+			return allAPI;
+		end
+
+		APIDocumentation.predicates = {};
+
+		for _, system in ipairs(APIDocumentation.systems) do
+			local predicates = predicateDocumentation[system.Name];
+			if (predicates) then
+				system.Predicates = {};
+				for _, predicate in ipairs(predicates) do
+					Mixin(predicate, APII_PredicateAPIMixin);
+					predicate.System = system;
+					tinsert(system.Predicates, predicate);
+					tinsert(APIDocumentation.predicates, predicate);
+				end
+
+				system.originalFindAllAPIMatches = system.FindAllAPIMatches;
+				system.FindAllAPIMatches = ReplacerFindAllAPIMatches;
+
+				system.originalListAllAPI = system.ListAllAPI;
+				system.ListAllAPI = ReplacerListAllAPI;
+			end
+		end
+
+		wipe(predicateDocumentation);
+
+		APIDocumentation.FindAllAPIMatches = function(documentation, apiToSearchFor)
+			apiToSearchFor = apiToSearchFor:lower();
+
+			local matches = {
+				tables = {},
+				functions = {},
+				events = {},
+				systems = {},
+				callbacks = {},
+				predicates = {},
+			};
+
+			documentation:AddAllMatches(documentation.tables, matches.tables, apiToSearchFor);
+			documentation:AddAllMatches(documentation.functions, matches.functions, apiToSearchFor);
+			documentation:AddAllMatches(documentation.systems, matches.systems, apiToSearchFor);
+			documentation:AddAllMatches(documentation.events, matches.events, apiToSearchFor);
+			documentation:AddAllMatches(documentation.callbacks, matches.callbacks, apiToSearchFor);
+			documentation:AddAllMatches(documentation.predicates, matches.predicates, apiToSearchFor);
+
+			-- Only return something if we matched anything
+			for name, subTable in pairs(matches) do
+				if #subTable > 0 then
+					return matches;
+				end
+			end
+
+			return nil;
+		end
+
+		APIDocumentation.originalGetAPITableByTypeName = APIDocumentation.GetAPITableByTypeName;
+		APIDocumentation.GetAPITableByTypeName = function(documentation, apiType)
+			local result = documentation:originalGetAPITableByTypeName(apiType);
+			if (result) then return result; end
+
+			if (apiType == "predicate") then
+				return documentation.predicates;
+			end
+			return nil;
+		end
+		
 	end
 
 
@@ -325,8 +523,6 @@ local function AlterOfficialDocumentation()
 			end
 		end
 	end
-
-	tinsert(APIDocumentation.systems, 1, noSystemContent);
 end
 
 --------------------------------
@@ -832,7 +1028,26 @@ function APII_TextBlockMixin:OnLoad()
 end
 
 function APII_TextBlockMixin:OnHyperlinkClick(...)
+	self:OnHyperlinkLeave();
 	self:GetParent():OnHyperlinkClick(...);
+end
+
+function APII_TextBlockMixin:OnHyperlinkEnter(link)
+	SetCursorByMode(Enum.Cursormode.CastCursor);
+
+	local apiType, name, system = link:match("api:(%w+):(%w+):?(%w*)");
+	local apiInfo = APIDocumentation:FindAPIByName(apiType, name, system);
+	if (not apiInfo or not apiInfo.TooltipFunction) then return; end
+
+
+	GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT", 4, 4);
+	apiInfo:TooltipFunction(GameTooltip);
+	GameTooltip:Show();
+end
+
+function APII_TextBlockMixin:OnHyperlinkLeave()
+	SetCursorByMode(Enum.Cursormode.PointCursor);
+	GameTooltip:Hide();
 end
 
 function APII_TextBlockMixin:GetTextArea()
@@ -1185,7 +1400,8 @@ do
 			tableData:AddRowText(index..".");
 		end
 
-		tableData:AddRowText(fieldInfo:GenerateAPILink());
+		local coloredName = GetColoredAPIName(fieldInfo);
+		tableData:AddRowText(coloredName);
 
 		local typeText = fieldInfo:GetLuaType();
 		if (fieldInfo.Mixin) then
@@ -1282,10 +1498,7 @@ do
 		local isConstant = apiInfo.Type == "Constants";
 
 		do
-			local text = PART_OF_NO_SYSTEM;
-			if (apiInfo.System and not apiInfo.System.isFake) then
-				text = string.format(PART_OF_SYSTEM, apiInfo.System:GenerateAPILink());
-			end
+			local text = GetSystemString(apiInfo);
 			self:AddBasicBlock(APII_SYSTEM_SOURCE_COLOR:WrapTextInColorCode(text));
 		end
 
@@ -1377,6 +1590,12 @@ do
 			for key, value in pairs(apiInfo) do
 				if (type(value) == "boolean" and key ~= UNDOCUMENTED_LABEL) then
 					local label = key;
+
+					local predicate = APIDocumentation:FindAPIByName("predicate", label);
+					if (predicate) then
+						label = predicate:GenerateAPILink();
+					end
+
 					if (not value) then
 						label = label .. APII_COMMENT_COLOR:WrapTextInColorCode(" (false)");
 					end
@@ -1412,6 +1631,14 @@ do
 				local t = {
 					APII_FIELDS_COLOR:WrapTextInColorCode("SecretArguments");
 					apiInfo.SecretArguments;
+				}
+				tinsert(metaTable, t);
+			end
+
+			if (apiInfo.FailureMode) then
+				local t = {
+					APII_FIELDS_COLOR:WrapTextInColorCode("FailureMode");
+					apiInfo.FailureMode;
 				}
 				tinsert(metaTable, t);
 			end
@@ -2179,6 +2406,17 @@ function APII_CoreMixin:OnLoad()
 		local function FilterDropdownSetup(dropdown, rootDescription)
 			rootDescription:SetTag("APII_FILTERS_DROPDOWN");
 
+			local function SetAllFilters(value)
+				for key in pairs(APII.db.global.filters) do
+					APII.db.global.filters[key] = value;
+				end
+				self:UpdateSystemContent();
+				return MenuResponse.Refresh;
+			end
+
+			rootDescription:CreateButton(CHECK_ALL, SetAllFilters, true);
+			rootDescription:CreateButton(UNCHECK_ALL, SetAllFilters, false);
+
 			for k, filterType in ipairs(sortedFilters) do
 				local function GetFilterChecked()
 					return APII.db and APII.db.global.filters[filterType];
@@ -2493,6 +2731,12 @@ function APII_CoreMixin:UpdateSystemContent(scrollPosition)
 
 		for k, info in ipairs(apiMatches.tables) do
 			AddSystemContentToDateprovider(info);
+		end
+
+		if(apiMatches.predicates) then
+			for k, info in ipairs(apiMatches.predicates) do
+				AddSystemContentToDateprovider(info);
+			end
 		end
 	end
 	dprint(passed, "/", total);

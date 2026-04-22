@@ -1,9 +1,9 @@
-﻿## Interface: 120001
+﻿## Interface: 120005
 ## Title: APIInterface
 ## Notes: Interface for api documentation.
 ## IconAtlas: Class
 ## Author: LanceDH
-## Version: 12.0.02
+## Version: 12.0.03
 ## SavedVariables: APIIDB
 
 ## Category: Development Tools

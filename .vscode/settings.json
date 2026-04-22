@@ -45,6 +45,32 @@
         "ARENA_NAME_FONT_COLOR",
         "CopyTable",
         "Round",
-        "GameTooltip_AddColoredLine"
+        "GameTooltip_AddColoredLine",
+        "EventUtil",
+        "GenerateClosure",
+        "GetOrCreateTableEntry",
+        "BaseAPIMixin",
+        "APIDocumentationMixin",
+        "TablesAPIMixin",
+        "GAME",
+        "GameTooltip_AddColoredDoubleLine",
+        "CHECK_ALL",
+        "UNCHECK_ALL",
+        "MenuResponse"
+    ],
+    "Lua.runtime.version": "Lua 5.1",
+    "Lua.runtime.builtin": {
+        "basic": "disable",
+        "debug": "disable",
+        "io": "disable",
+        "math": "disable",
+        "os": "disable",
+        "package": "disable",
+        "string": "disable",
+        "table": "disable",
+        "utf8": "disable"
+    },
+    "Lua.workspace.library": [
+        "~\\.vscode\\extensions\\ketho.wow-api-0.22.3\\Annotations\\Core"
     ]
 }

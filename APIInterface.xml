@@ -60,6 +60,12 @@
 					<OnHyperlinkClick>
 						self:GetParent():GetParent():OnHyperlinkClick(link, text, button);
 					</OnHyperlinkClick>
+					<OnHyperlinkEnter>
+						self:GetParent():GetParent():OnHyperlinkEnter(link, text, button);
+					</OnHyperlinkEnter>
+					<OnHyperlinkLeave>
+						self:GetParent():GetParent():OnHyperlinkLeave();
+					</OnHyperlinkLeave>
 				</Scripts>
 			</SimpleHTML>
 
