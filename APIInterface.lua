@@ -67,8 +67,6 @@ for filterType in pairs(APII_FilterType) do
 	APII_DefaultSavedVariables.global.filters[filterType] = true;
 end
 
-local predicateDocumentation = {};
-
 function APII:OnInitialize()
 	APII.openedSystem = nil;
 	APII.openedAPIs = {};
@@ -79,7 +77,7 @@ function APII:OnInitialize()
 	local function OnDocumentationTableAdded(api, documentation)
 		if(documentation.Predicates and #documentation.Predicates > 0) then
 			local name = documentation.Name or SYSTEMLESS;
-			local t = GetOrCreateTableEntry(predicateDocumentation, name);
+			local t = GetOrCreateTableEntry(APIDocumentation.systemPredicates, name);
 			for k, data in ipairs(documentation.Predicates) do
 				tinsert(t, data);
 			end
@@ -87,9 +85,9 @@ function APII:OnInitialize()
 	end
 
 	local function HookDocumentationMixin()
-		if (APIDocumentation) then
-			hooksecurefunc(APIDocumentation, "AddDocumentationTable", OnDocumentationTableAdded);
-		end
+		APIDocumentation.predicates = {};
+		APIDocumentation.systemPredicates = {};
+		hooksecurefunc(APIDocumentation, "AddDocumentationTable", OnDocumentationTableAdded);
 	end
 
 	EventUtil.ContinueOnAddOnLoaded("Blizzard_APIDocumentation", HookDocumentationMixin);
@@ -407,10 +405,9 @@ local function AlterOfficialDocumentation()
 			return allAPI;
 		end
 
-		APIDocumentation.predicates = {};
-
 		for _, system in ipairs(APIDocumentation.systems) do
-			local predicates = predicateDocumentation[system.Name];
+			local rawPredicates = APIDocumentation.systemPredicates;
+			local predicates = rawPredicates and rawPredicates[system.Name];
 			if (predicates) then
 				system.Predicates = {};
 				for _, predicate in ipairs(predicates) do
@@ -428,7 +425,8 @@ local function AlterOfficialDocumentation()
 			end
 		end
 
-		wipe(predicateDocumentation);
+		wipe(APIDocumentation.systemPredicates);
+		APIDocumentation.systemPredicates = nil;
 
 		APIDocumentation.FindAllAPIMatches = function(documentation, apiToSearchFor)
 			apiToSearchFor = apiToSearchFor:lower();
