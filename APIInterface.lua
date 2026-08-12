@@ -52,6 +52,7 @@ local APII_FIELDS_COLOR = NORMAL_FONT_COLOR;-- overwitten with actual color once
 local GlobalSearchTypes = EnumUtil.MakeEnum("Functions", "Tables", "Frames", "Strings", "Values");
 local GlobalSearchTypesTranslation = EnumUtil.GenerateNameTranslation(GlobalSearchTypes);
 local SecretAspectTranslator = EnumUtil.GenerateNameTranslation(Enum.SecretAspect);
+local ForbiddenAspectTranslator = EnumUtil.GenerateNameTranslation(Enum.ForbiddenAspect);
 
 
 local APII_FilterType = EnumUtil.MakeEnum("Function", "Event", "CallbackType", "Constants", "Enumeration", "Structure", "Undocumented", "Precondition", "Secret");
@@ -156,6 +157,11 @@ local function GetColoredAPIName(apiInfo)
 	end
 
 	return string.format("|cff%s%s|r", apiInfo:GetLinkHexColor(), apiInfo:GetName());
+end
+
+local function OpenTableInspect(table, label)
+	DebugTools_LoadUI();
+	DisplayTableInspectorWindow(table, label);
 end
 
 local APII_FrameFactory = CreateFrameFactory();
@@ -1033,14 +1039,32 @@ end
 function APII_TextBlockMixin:OnHyperlinkEnter(link)
 	SetCursorByMode(Enum.Cursormode.CastCursor);
 
-	local apiType, name, system = link:match("api:(%w+):(%w+):?(%w*)");
+	local apiType, name, system, payload = link:match("api:(%w+):(%w+):?(%w*):?(%d*)");
 	local apiInfo = APIDocumentation:FindAPIByName(apiType, name, system);
-	if (not apiInfo or not apiInfo.TooltipFunction) then return; end
+	if (not apiInfo) then return; end
 
-
-	GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT", 4, 4);
-	apiInfo:TooltipFunction(GameTooltip);
-	GameTooltip:Show();
+	if (apiInfo.TooltipFunction) then
+		GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT", 4, 4);
+		apiInfo:TooltipFunction(GameTooltip, payload);
+		GameTooltip:Show();
+	else
+		local prettyType = apiInfo:GetPrettyType();
+		if (prettyType == "enumeration" and tonumber(payload)) then
+			local index = tonumber(payload);
+			if (index and index <= #apiInfo.Fields) then
+				local field = apiInfo.Fields[index];
+				if (field.Documentation and #field.Documentation > 0) then
+					GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT", 4, 4);
+					local title = string.format("|cff%sEnum.%s.%s|r", apiInfo:GetLinkHexColor(), apiInfo:GetName(), field:GetName())
+					GameTooltip_SetTitle(GameTooltip, title, nil, false);
+					for k, doc in ipairs(field.Documentation) do
+						GameTooltip_AddColoredLine(GameTooltip, doc, WHITE_FONT_COLOR);
+					end
+					GameTooltip:Show();
+				end
+			end
+		end
+	end
 end
 
 function APII_TextBlockMixin:OnHyperlinkLeave()
@@ -1318,6 +1342,25 @@ end
 function APII_SystemButtonMixin:OnClick()
 	self:TriggerEvent(APII_SystemButtonMixin.Event.OnClick, self.data);
 end
+
+function APII_SystemButtonMixin:OnEnter()
+	if (not self.Name:IsTruncated() and not self.Namespace:IsTruncated()) then return; end
+
+	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+	GameTooltip_SetTitle(GameTooltip, self.data.Name, NORMAL_FONT_COLOR, false);
+	if (self.data.Namespace and #self.data.Namespace > 0) then
+		GameTooltip_AddColoredLine(GameTooltip, self.data.Namespace, APII_NAMESPACE_COLOR, false, 6);
+	end
+	GameTooltip:Show();
+end
+
+function APII_SystemButtonMixin:OnLeave()
+	GameTooltip:Hide();
+end
+
+--------------------------------
+-- Table Content Mixin
+--------------------------------
 
 local APII_TableContstants = {
 	IsHeader = true;
@@ -1637,6 +1680,27 @@ do
 				local t = {
 					APII_FIELDS_COLOR:WrapTextInColorCode("FailureMode");
 					apiInfo.FailureMode;
+				}
+				tinsert(metaTable, t);
+			end
+
+			if (apiInfo.ChecksForbiddenAspects) then
+				local forbiddenAspect = APIDocumentation:FindAPIByName("table", "ForbiddenAspect");
+
+				local labels = {};
+				for k, entry in ipairs(apiInfo.ChecksForbiddenAspects) do
+					for k2, field in ipairs(forbiddenAspect.Fields) do
+						if (field.EnumValue == entry.Aspect) then
+							local label = "Enum.ForbiddenAspect." .. ForbiddenAspectTranslator(entry.Aspect);
+							label = string.format("|cff%s|Hapi:%s:%s:%s:%s|h%s|h|r |c%s(%s)|r", forbiddenAspect:GetLinkHexColor(), forbiddenAspect:GetType(), forbiddenAspect:GetName(), forbiddenAspect:GetParentName(), k2, label, APII_COMMENT_COLOR:GenerateHexColor(), entry.Argument);
+							tinsert(labels, label);
+							break;
+						end
+					end
+				end
+				local t = {
+					APII_FIELDS_COLOR:WrapTextInColorCode("ChecksForbiddenAspects");
+					table.concat(labels, ", ");
 				}
 				tinsert(metaTable, t);
 			end
@@ -1964,11 +2028,6 @@ function APII_CoreMixin:OnDragStop()
 	-- New size can mean different text lines and different frame heights
 	-- We don't just rebuild the scrollbox on size change because it's too expensive
 	self:UpdateSystemContent()
-end
-
-local function OpenTableInspect(table, label)
-	UIParentLoadAddOn("Blizzard_DebugTools");
-	DisplayTableInspectorWindow(table, label);
 end
 
 function APII_CoreMixin:UpdateSearchBoxVisibility()
@@ -2607,7 +2666,7 @@ function APII_CoreMixin:OnShow()
 	if (not self.initialized) then
 		self.initialized = true;
 		if (not APIDocumentation) then
-			C_AddOns.LoadAddOn("Blizzard_APIDocumentationGenerated");
+			APIDocumentation_LoadUI();
 		end
 
 		APII_FIELDS_COLOR = CreateColorFromRGBHexString(FieldsAPIMixin:GetLinkHexColor());
