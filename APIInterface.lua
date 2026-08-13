@@ -1,6 +1,9 @@
 ﻿
 local _addonName, _addon = ...;
 
+_addon.mixins = {};
+local _M = _addon.mixins;
+
 APII = LibStub("AceAddon-3.0"):NewAddon(_addonName);
 
 local MIN_FRAME_WIDTH = 800;
@@ -554,9 +557,9 @@ local StringTester = CreateAndInitFromMixin(APII_StringTesterMixin);
 -- Vertical layout
 --------------------------------
 
-APII_VerticalLayoutMixin = {};
+_M.APII_VerticalLayoutMixin = {};
 
-function APII_VerticalLayoutMixin:OnLoad()
+function _M.APII_VerticalLayoutMixin:OnLoad()
 	self.children = { self:GetChildren() };
 
 	for k, child in ipairs(self.children) do
@@ -573,7 +576,7 @@ do
 			child.bottomPadding or 0;
 	end
 
-	function APII_VerticalLayoutMixin:ReAnchorChildren()
+	function _M.APII_VerticalLayoutMixin:ReAnchorChildren()
 		local visibleChildren = {};
 		for k, child in ipairs(self.children) do
 			child:ClearAllPoints();
@@ -606,35 +609,35 @@ end
 -- Editbox
 --------------------------------
 
-APII_EditBoxMixin = CreateFromMixins(CallbackRegistryMixin);
+_M.APII_EditBoxMixin = CreateFromMixins(CallbackRegistryMixin);
 
-APII_EditBoxMixin:GenerateCallbackEvents(
+_M.APII_EditBoxMixin:GenerateCallbackEvents(
 	{
 		"OnTextChanged";
 	}
 );
 
-function APII_EditBoxMixin:OnLoad()
+function _M.APII_EditBoxMixin:OnLoad()
 	CallbackRegistryMixin.OnLoad(self);
 	self.defaultHighlightColor = CreateColor(self:GetHighlightColor());
 end
 
-function APII_EditBoxMixin:OnEnterPressed()
+function _M.APII_EditBoxMixin:OnEnterPressed()
 	self:ClearFocus();
 end
 
-function APII_EditBoxMixin:OnEditFocusLost()
+function _M.APII_EditBoxMixin:OnEditFocusLost()
 	self:ClearHighlightText();
 end
 
-function APII_EditBoxMixin:OnKeyDown(key)
+function _M.APII_EditBoxMixin:OnKeyDown(key)
 	if (IsControlKeyDown() and (key == "C" or key == "X")) then
 		self:StartCopyHighlight();
 		PlaySound(SOUNDKIT.TUTORIAL_POPUP);
 	end
 end
 
-function APII_EditBoxMixin:OnTextChanged(userInput)
+function _M.APII_EditBoxMixin:OnTextChanged(userInput)
 	if (userInput) then
 		self:SetAlpha(0);
 		C_Timer.After(0, function()
@@ -643,14 +646,14 @@ function APII_EditBoxMixin:OnTextChanged(userInput)
 		self:SetText(self.originalText);
 		self:ClearFocus();
 	end
-	self:TriggerEvent(APII_EditBoxMixin.Event.OnTextChanged, userInput);
+	self:TriggerEvent(_M.APII_EditBoxMixin.Event.OnTextChanged, userInput);
 end
 
-function APII_EditBoxMixin:OnHide()
+function _M.APII_EditBoxMixin:OnHide()
 	self:StopCopyHighlight();
 end
 
-function APII_EditBoxMixin:OnShow()
+function _M.APII_EditBoxMixin:OnShow()
 	self:SetHighlightColor(0, 0 , 0, 0);
 
 	C_Timer.After(0, function()
@@ -662,7 +665,7 @@ do
 	local COPY_HIGHLIGHT_DURATION = 0.3;
 	local COPY_HIGHLIGHT_COLOR = CreateColor(0.6, 0.6, 0.2);
 
-	function APII_EditBoxMixin:StartCopyHighlight()
+	function _M.APII_EditBoxMixin:StartCopyHighlight()
 		self:SetHighlightColor(COPY_HIGHLIGHT_COLOR:GetRGB());
 		self.highlightTimer = COPY_HIGHLIGHT_DURATION;
 		if (not self.updateScriptSet) then
@@ -671,13 +674,13 @@ do
 		end
 	end
 
-	function APII_EditBoxMixin:StopCopyHighlight()
+	function _M.APII_EditBoxMixin:StopCopyHighlight()
 		self:SetHighlightColor(self.defaultHighlightColor:GetRGB());
 		self:SetScript("OnUpdate", nil);
 		self.updateScriptSet = false;
 	end
 
-	function APII_EditBoxMixin:OnUpdate(elapsed)
+	function _M.APII_EditBoxMixin:OnUpdate(elapsed)
 		self.highlightTimer = Clamp(self.highlightTimer - elapsed, 0, COPY_HIGHLIGHT_DURATION);
 
 		local r, g, b = COPY_HIGHLIGHT_COLOR:GetRGB();
@@ -697,9 +700,9 @@ end
 -- Searchbox
 --------------------------------
 
-APII_SearchboxMixin = CreateFromMixins(CallbackRegistryMixin);
+_M.APII_SearchboxMixin = CreateFromMixins(CallbackRegistryMixin);
 
-APII_SearchboxMixin:GenerateCallbackEvents(
+_M.APII_SearchboxMixin:GenerateCallbackEvents(
 	{
 		"OnTextChanged";
 		"OnClearButtonClicked";
@@ -707,17 +710,17 @@ APII_SearchboxMixin:GenerateCallbackEvents(
 	}
 );
 
-function APII_SearchboxMixin:OnLoad()
+function _M.APII_SearchboxMixin:OnLoad()
 	CallbackRegistryMixin.OnLoad(self);
 	SearchBoxTemplate_OnLoad(self);
 	local function OnClearButtonClicked()
-		self:TriggerEvent(APII_SearchboxMixin.Event.OnClearButtonClicked);
+		self:TriggerEvent(_M.APII_SearchboxMixin.Event.OnClearButtonClicked);
 	end
 
 	self.clearButton:HookScript("OnClick", OnClearButtonClicked);
 end
 
-function APII_SearchboxMixin:OnTextChanged(userInput)
+function _M.APII_SearchboxMixin:OnTextChanged(userInput)
 	SearchBoxTemplate_OnTextChanged(self);
 
 	local text = self:GetText();
@@ -729,15 +732,15 @@ function APII_SearchboxMixin:OnTextChanged(userInput)
 		self:SetTextColor(WHITE_FONT_COLOR:GetRGB());
 	end
 
-	self:TriggerEvent(APII_SearchboxMixin.Event.OnTextChanged, self:GetText(), userInput);
+	self:TriggerEvent(_M.APII_SearchboxMixin.Event.OnTextChanged, self:GetText(), userInput);
 end
 
-function APII_SearchboxMixin:OnEditFocusGained()
-	self:TriggerEvent(APII_SearchboxMixin.Event.OnEditFocusChanged, true);
+function _M.APII_SearchboxMixin:OnEditFocusGained()
+	self:TriggerEvent(_M.APII_SearchboxMixin.Event.OnEditFocusChanged, true);
 end
 
-function APII_SearchboxMixin:OnEditFocusLost()
-	self:TriggerEvent(APII_SearchboxMixin.Event.OnEditFocusChanged, false);
+function _M.APII_SearchboxMixin:OnEditFocusLost()
+	self:TriggerEvent(_M.APII_SearchboxMixin.Event.OnEditFocusChanged, false);
 end
 
 --------------------------------
@@ -766,29 +769,29 @@ end
 -- History Button
 --------------------------------
 
-APII_HistoryButtonMixin = CreateFromMixins(CallbackRegistryMixin, APII_TooltipMixin);
+_M.APII_HistoryButtonMixin = CreateFromMixins(CallbackRegistryMixin, APII_TooltipMixin);
 
-APII_HistoryButtonMixin:GenerateCallbackEvents(
+_M.APII_HistoryButtonMixin:GenerateCallbackEvents(
 	{
 		"OnClick";
 	}
 );
 
-function APII_HistoryButtonMixin:OnLoad()
+function _M.APII_HistoryButtonMixin:OnLoad()
 	WowStyle2IconButtonMixin.OnLoad(self);
 	CallbackRegistryMixin.OnLoad(self);
 end
 
-function APII_HistoryButtonMixin:OnClick()
-	self:TriggerEvent(APII_HistoryButtonMixin.Event.OnClick, self.delta);
+function _M.APII_HistoryButtonMixin:OnClick()
+	self:TriggerEvent(_M.APII_HistoryButtonMixin.Event.OnClick, self.delta);
 end
 
-function APII_HistoryButtonMixin:OnEnter()
+function _M.APII_HistoryButtonMixin:OnEnter()
 	WowStyle2IconButtonMixin.OnEnter(self);
 	APII_TooltipMixin.OnEnter(self);
 end
 
-function APII_HistoryButtonMixin:OnLeave()
+function _M.APII_HistoryButtonMixin:OnLeave()
 	WowStyle2IconButtonMixin.OnLeave(self);
 	APII_TooltipMixin.OnLeave(self);
 end
@@ -797,20 +800,20 @@ end
 -- Checkbutton
 --------------------------------
 
-APII_CheckButtonMixin = CreateFromMixins(WowStyle2IconButtonMixin, CallbackRegistryMixin, APII_TooltipMixin);
+_M.APII_CheckButtonMixin = CreateFromMixins(WowStyle2IconButtonMixin, CallbackRegistryMixin, APII_TooltipMixin);
 
-APII_CheckButtonMixin:GenerateCallbackEvents(
+_M.APII_CheckButtonMixin:GenerateCallbackEvents(
 	{
 		"OnClick";
 	}
 );
 
-function APII_CheckButtonMixin:OnLoad()
+function _M.APII_CheckButtonMixin:OnLoad()
 	WowStyle2IconButtonMixin.OnLoad(self);
 	CallbackRegistryMixin.OnLoad(self);
 end
 
-function APII_CheckButtonMixin:OnButtonStateChanged()
+function _M.APII_CheckButtonMixin:OnButtonStateChanged()
 	self.Background:SetAtlas(self:GetBackgroundAtlas(), TextureKitConstants.UseAtlasSize);
 
 	local icon = self.normalAtlas;
@@ -829,26 +832,26 @@ function APII_CheckButtonMixin:OnButtonStateChanged()
 	end
 end
 
-function APII_CheckButtonMixin:SetIconHighlighted(value)
+function _M.APII_CheckButtonMixin:SetIconHighlighted(value)
 	self.highlightOverriden = value;
 	self:OnButtonStateChanged();
 end
 
-function APII_CheckButtonMixin:GetIconHighlighted()
+function _M.APII_CheckButtonMixin:GetIconHighlighted()
 	return self:GetChecked() or self.highlightOverriden;
 end
 
-function APII_CheckButtonMixin:OnClick()
+function _M.APII_CheckButtonMixin:OnClick()
 	self:OnButtonStateChanged();
-	self:TriggerEvent(APII_CheckButtonMixin.Event.OnClick);
+	self:TriggerEvent(_M.APII_CheckButtonMixin.Event.OnClick);
 end
 
-function APII_CheckButtonMixin:OnEnter()
+function _M.APII_CheckButtonMixin:OnEnter()
 	WowStyle2IconButtonMixin.OnEnter(self);
 	APII_TooltipMixin.OnEnter(self);
 end
 
-function APII_CheckButtonMixin:OnLeave()
+function _M.APII_CheckButtonMixin:OnLeave()
 	WowStyle2IconButtonMixin.OnLeave(self);
 	APII_TooltipMixin.OnLeave(self);
 end
@@ -857,30 +860,30 @@ end
 -- TextArea mixins
 --------------------------------
 
-APII_TextAreaMixin = {};
+_M.APII_TextAreaMixin = {};
 
-function APII_TextAreaMixin:GetEditBox()
+function _M.APII_TextAreaMixin:GetEditBox()
 	return self.EditBox;
 end
 
-function APII_TextAreaMixin:GetHtml()
+function _M.APII_TextAreaMixin:GetHtml()
 	return self.Html;
 end
 
-function APII_TextAreaMixin:GetFontString()
+function _M.APII_TextAreaMixin:GetFontString()
 	return self.Text;
 end
 
-function APII_TextAreaMixin:GetEditBoxInsets()
+function _M.APII_TextAreaMixin:GetEditBoxInsets()
 	return self.HitInsetLeft or 0
 			, self.HitInsetRight or 0
 			, self.HitInsetTop or 0
 			, self.HitInsetBottom or 0;
 end
 
-function APII_TextAreaMixin:OnLoad()
+function _M.APII_TextAreaMixin:OnLoad()
 	local editBox = self:GetEditBox();
-	editBox:RegisterCallback(APII_EditBoxMixin.Event.OnTextChanged, function(_, userInput)
+	editBox:RegisterCallback(_M.APII_EditBoxMixin.Event.OnTextChanged, function(_, userInput)
 			if (userInput) then
 				local html = self:GetHtml();
 				html:Show();
@@ -891,7 +894,7 @@ function APII_TextAreaMixin:OnLoad()
 	editBox:SetHitRectInsets(self:GetEditBoxInsets());
 end
 
-function APII_TextAreaMixin:SetHyperlinkingEnabled(enable)
+function _M.APII_TextAreaMixin:SetHyperlinkingEnabled(enable)
 	local html = self:GetHtml();
 	local editBox = self:GetEditBox();
 	html:Show();
@@ -917,7 +920,7 @@ function APII_TextAreaMixin:SetHyperlinkingEnabled(enable)
 	end
 end
 
-function APII_TextAreaMixin:SetAvailableWidth(width)
+function _M.APII_TextAreaMixin:SetAvailableWidth(width)
 	local editBox = self:GetEditBox();
 	local html = self:GetHtml();
 	local fonsString = self:GetFontString();
@@ -928,7 +931,7 @@ function APII_TextAreaMixin:SetAvailableWidth(width)
 	fonsString:SetWidth(width);
 end
 
-function APII_TextAreaMixin:SetText(text, font)
+function _M.APII_TextAreaMixin:SetText(text, font)
 	local editBox = self:GetEditBox();
 	local html = self:GetHtml();
 	local fonsString = self:GetFontString();
@@ -996,7 +999,7 @@ function APII_TextAreaPaddingMixin:UpdateTextArea()
 end
 
 function APII_TextAreaPaddingMixin:SetText(text, font)
-	APII_TextAreaMixin.SetText(self, text, font);
+	_M.APII_TextAreaMixin.SetText(self, text, font);
 	local leftPadding, rightPadding, topPadding, bottomPadding = self:GetPadding();
 	local height = self:GetHeight() + topPadding + bottomPadding;
 	self:SetHeight(height);
@@ -1004,13 +1007,13 @@ end
 
 -- Background
 
-APII_TableTextAreaMixin = CreateFromMixins(APII_TextAreaMixin, APII_TextAreaPaddingMixin)
+_M.APII_TableTextAreaMixin = CreateFromMixins(_M.APII_TextAreaMixin, APII_TextAreaPaddingMixin)
 
-function APII_TableTextAreaMixin:GetBackground()
+function _M.APII_TableTextAreaMixin:GetBackground()
 	return self.Background;
 end
 
-function APII_TableTextAreaMixin:SetBackgroundColor(color)
+function _M.APII_TableTextAreaMixin:SetBackgroundColor(color)
 	if (not color or not color.GetRGBA) then return; end
 	local background = self:GetBackground();
 	background:SetColorTexture(color:GetRGBA());
@@ -1018,25 +1021,25 @@ end
 
 -- Nineslice
 
-APII_TextBlockNineSliceMixin = CreateFromMixins(APII_TextAreaMixin, APII_TextAreaPaddingMixin);
+_M.APII_TextBlockNineSliceMixin = CreateFromMixins(_M.APII_TextAreaMixin, APII_TextAreaPaddingMixin);
 
 
 --------------------------------
 -- TextBlock mixins
 --------------------------------
 
-APII_TextBlockMixin = {};
+_M.APII_TextBlockMixin = {};
 
-function APII_TextBlockMixin:OnLoad()
+function _M.APII_TextBlockMixin:OnLoad()
 
 end
 
-function APII_TextBlockMixin:OnHyperlinkClick(...)
+function _M.APII_TextBlockMixin:OnHyperlinkClick(...)
 	self:OnHyperlinkLeave();
 	self:GetParent():OnHyperlinkClick(...);
 end
 
-function APII_TextBlockMixin:OnHyperlinkEnter(link)
+function _M.APII_TextBlockMixin:OnHyperlinkEnter(link)
 	SetCursorByMode(Enum.Cursormode.CastCursor);
 
 	local apiType, name, system, payload = link:match("api:(%w+):(%w+):?(%w*):?(%d*)");
@@ -1067,20 +1070,20 @@ function APII_TextBlockMixin:OnHyperlinkEnter(link)
 	end
 end
 
-function APII_TextBlockMixin:OnHyperlinkLeave()
+function _M.APII_TextBlockMixin:OnHyperlinkLeave()
 	SetCursorByMode(Enum.Cursormode.PointCursor);
 	GameTooltip:Hide();
 end
 
-function APII_TextBlockMixin:GetTextArea()
+function _M.APII_TextBlockMixin:GetTextArea()
 	return self.TextArea;
 end
 
-function APII_TextBlockMixin:SetHyperlinkingEnabled(enable)
+function _M.APII_TextBlockMixin:SetHyperlinkingEnabled(enable)
 	self:GetTextArea():SetHyperlinkingEnabled(enable);
 end
 
-function APII_TextBlockMixin:GetPadding()
+function _M.APII_TextBlockMixin:GetPadding()
 	if (not self.blockData) then
 		return 0, 0, 0, 0;
 	end
@@ -1090,7 +1093,7 @@ function APII_TextBlockMixin:GetPadding()
 			,(self.blockData.bottomPadding or 0)
 end
 
-function APII_TextBlockMixin:Initialize(blockData)
+function _M.APII_TextBlockMixin:Initialize(blockData)
 	self.blockData = blockData;
 
 	local basicString = blockData.textString;
@@ -1108,12 +1111,12 @@ end
 
 -- CopyString Textblock
 
-APII_TextBlockCopyStringMixin = CreateFromMixins(APII_TextBlockMixin);
+_M.APII_TextBlockCopyStringMixin = CreateFromMixins(_M.APII_TextBlockMixin);
 
 do
 	local COPY_STRING_PADDING = 10;
 
-	function APII_TextBlockCopyStringMixin:Initialize(blockData)
+	function _M.APII_TextBlockCopyStringMixin:Initialize(blockData)
 		self.blockData = blockData;
 
 		local basicString = blockData.textString;
@@ -1134,7 +1137,7 @@ end
 
 -- Table Textblock
 
-APII_TextBlockTableMixin = CreateFromMixins(APII_TextBlockMixin);
+_M.APII_TextBlockTableMixin = CreateFromMixins(_M.APII_TextBlockMixin);
 
 do
 	local TABLE_SPACING_HORIZONTAL = 8;
@@ -1146,18 +1149,18 @@ do
 	local TABLE_ALTERNATE_LIGHT_COLOR = CreateColor(0.15, 0.15, 0.15, 1);
 	local TABLE_ALTERNATE_DARK_COLOR = CreateColor(0.12, 0.12, 0.12, 1);
 
-	function APII_TextBlockTableMixin:OnLoad()
-		APII_TextBlockMixin.OnLoad(self);
+	function _M.APII_TextBlockTableMixin:OnLoad()
+		_M.APII_TextBlockMixin.OnLoad(self);
 		self.textAreas = {};
 	end
 
-	function APII_TextBlockTableMixin:SetHyperlinkingEnabled(enable)
+	function _M.APII_TextBlockTableMixin:SetHyperlinkingEnabled(enable)
 		for k, frame in ipairs(self.textAreas) do
 			frame:SetHyperlinkingEnabled(enable);
 		end
 	end
 
-	function APII_TextBlockTableMixin:Initialize(blockData)
+	function _M.APII_TextBlockTableMixin:Initialize(blockData)
 		self.blockData = blockData;
 
 		for k, frame in ipairs(self.textAreas) do
@@ -1322,15 +1325,15 @@ end
 -- SystemButton
 --------------------------------
 
-APII_SystemButtonMixin = CreateFromMixins(CallbackRegistryMixin);
+_M.APII_SystemButtonMixin = CreateFromMixins(CallbackRegistryMixin);
 
-APII_SystemButtonMixin:GenerateCallbackEvents(
+_M.APII_SystemButtonMixin:GenerateCallbackEvents(
 	{
 		"OnClick";
 	}
 );
 
-function APII_SystemButtonMixin:Initialize(data)
+function _M.APII_SystemButtonMixin:Initialize(data)
 	self.data = data;
 	self.Name:SetText(data.Name);
 	local namespace = data.Namespace and APII_NAMESPACE_COLOR:WrapTextInColorCode(data.Namespace) or "";
@@ -1339,11 +1342,11 @@ function APII_SystemButtonMixin:Initialize(data)
 	self.SelectedHighlight:SetShown(APII.openedSystem == data);
 end
 
-function APII_SystemButtonMixin:OnClick()
-	self:TriggerEvent(APII_SystemButtonMixin.Event.OnClick, self.data);
+function _M.APII_SystemButtonMixin:OnClick()
+	self:TriggerEvent(_M.APII_SystemButtonMixin.Event.OnClick, self.data);
 end
 
-function APII_SystemButtonMixin:OnEnter()
+function _M.APII_SystemButtonMixin:OnEnter()
 	if (not self.Name:IsTruncated() and not self.Namespace:IsTruncated()) then return; end
 
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
@@ -1354,7 +1357,7 @@ function APII_SystemButtonMixin:OnEnter()
 	GameTooltip:Show();
 end
 
-function APII_SystemButtonMixin:OnLeave()
+function _M.APII_SystemButtonMixin:OnLeave()
 	GameTooltip:Hide();
 end
 
@@ -1886,21 +1889,21 @@ end
 -- System Content Mixin
 --------------------------------
 
-APII_SystemContentMixin = CreateFromMixins(CallbackRegistryMixin);
+_M.APII_SystemContentMixin = CreateFromMixins(CallbackRegistryMixin);
 
-APII_SystemContentMixin:GenerateCallbackEvents(
+_M.APII_SystemContentMixin:GenerateCallbackEvents(
 	{
 		"ExpandToggled";
 		"OnHyperlinkClick";
 	}
 );
 
-function APII_SystemContentMixin:OnClick()
-	self:TriggerEvent(APII_SystemContentMixin.Event.ExpandToggled, self.data);
+function _M.APII_SystemContentMixin:OnClick()
+	self:TriggerEvent(_M.APII_SystemContentMixin.Event.ExpandToggled, self.data);
 end
 
-function APII_SystemContentMixin:OnHyperlinkClick(link, text, button)
-	self:TriggerEvent(APII_SystemContentMixin.Event.OnHyperlinkClick, link, self.data);
+function _M.APII_SystemContentMixin:OnHyperlinkClick(link, text, button)
+	self:TriggerEvent(_M.APII_SystemContentMixin.Event.OnHyperlinkClick, link, self.data);
 end
 
 do
@@ -1908,7 +1911,7 @@ do
 		block:SetHyperlinkingEnabled(enable);
 	end
 
-	function APII_SystemContentMixin:SetHyperlinkingEnabled(enable)
+	function _M.APII_SystemContentMixin:SetHyperlinkingEnabled(enable)
 		if (not self.contentBlockManager) then return; end
 
 		self.contentBlockManager:DoForEveryActiveBlock(SetBlockHyperlinkingEnabled, enable);
@@ -1917,7 +1920,7 @@ do
 	end
 end
 
-function APII_SystemContentMixin:Initialize(data, expanded)
+function _M.APII_SystemContentMixin:Initialize(data, expanded)
 	self.data = data;
 	local apiInfo = data;
 	local totalHeight = 0;
@@ -1971,56 +1974,56 @@ end
 -- Core mixin
 --------------------------------
 
-APII_CoreMixin = {};
+_M.APII_CoreMixin = {};
 
-function APII_CoreMixin:GetInSystemBanner()
+function _M.APII_CoreMixin:GetInSystemBanner()
 	return self.SystemContent.InSystemBanner;
 end
 
-function APII_CoreMixin:GetSystemContentSearch()
+function _M.APII_CoreMixin:GetSystemContentSearch()
 	return self.SystemContentScrollInset.SystemContent.SystemContentSearch;
 end
 
-function APII_CoreMixin:GetSystemContentScrollBox()
+function _M.APII_CoreMixin:GetSystemContentScrollBox()
 	return self.SystemContentScrollInset.SystemContent.SystemContentScrollBox;
 end
 
-function APII_CoreMixin:GetSystemScrollBox()
+function _M.APII_CoreMixin:GetSystemScrollBox()
 	return self.SystemContainer.SystemScrollBox;
 end
 
-function APII_CoreMixin:GetSystemSearch()
+function _M.APII_CoreMixin:GetSystemSearch()
 	return self.SystemContainer.SystemSearch;
 end
 
-function APII_CoreMixin:GetGeneralSearch()
+function _M.APII_CoreMixin:GetGeneralSearch()
 	return self.TopBar.GeneralSearch;
 end
 
-function APII_CoreMixin:GetHistoryBackButton()
+function _M.APII_CoreMixin:GetHistoryBackButton()
 	return self.TopBar.HistoryBackButton;
 end
 
-function APII_CoreMixin:GetHistoryForwardButton()
+function _M.APII_CoreMixin:GetHistoryForwardButton()
 	return self.TopBar.HistoryForwardButton;
 end
 
-function APII_CoreMixin:GetFilterDropdown()
+function _M.APII_CoreMixin:GetFilterDropdown()
 	return self.TopBar.FilterDropdown;
 end
 
-function APII_CoreMixin:GetGlobalSearchDropdown()
+function _M.APII_CoreMixin:GetGlobalSearchDropdown()
 	return self.TopBar.SearchGlobalDropdown;
 end
 
-function APII_CoreMixin:GetHighlightToggleButton()
+function _M.APII_CoreMixin:GetHighlightToggleButton()
 	return self.TopBar.HighlightToggleButton;
 end
 
-function APII_CoreMixin:OnSizeChanged()
+function _M.APII_CoreMixin:OnSizeChanged()
 end
 
-function APII_CoreMixin:OnDragStop()
+function _M.APII_CoreMixin:OnDragStop()
 	local scrollBox = self:GetSystemContentScrollBox();
 	if (not scrollBox:GetView()) then return; end
 
@@ -2030,7 +2033,7 @@ function APII_CoreMixin:OnDragStop()
 	self:UpdateSystemContent()
 end
 
-function APII_CoreMixin:UpdateSearchBoxVisibility()
+function _M.APII_CoreMixin:UpdateSearchBoxVisibility()
 	local hasGeneralSearchText = self:GetGeneralSearch():HasText();
 
 	local systemSearch = self:GetSystemSearch();
@@ -2040,7 +2043,7 @@ function APII_CoreMixin:UpdateSearchBoxVisibility()
 	systemContentSearch:SetShown(not hasGeneralSearchText);
 end
 
-function APII_CoreMixin:UpdateHistoryButtons()
+function _M.APII_CoreMixin:UpdateHistoryButtons()
 	local backButton = self:GetHistoryBackButton();
 	local forwardButton = self:GetHistoryForwardButton();
 
@@ -2140,7 +2143,7 @@ do
 		end;
 	}
 
-	function APII_CoreMixin:AddHistory(reason, api)
+	function _M.APII_CoreMixin:AddHistory(reason, api)
 		if (self.loadingHistory) then return; end
 		dprint(reason)
 
@@ -2179,7 +2182,7 @@ do
 	end
 end
 
-function APII_CoreMixin:StepHistory(delta)
+function _M.APII_CoreMixin:StepHistory(delta)
 	if (#self.history <= 1) then return; end
 	self.loadingHistory = true;
 
@@ -2237,14 +2240,14 @@ local function OnGeneralSearchChanged(coreFrame)
 	coreFrame:AddHistory(APII_HistoryReason.GeneralSearch);
 end
 
-function APII_CoreMixin:SetGeneralSearchText(text)
+function _M.APII_CoreMixin:SetGeneralSearchText(text)
 	local generalSearch = self:GetGeneralSearch();
 	generalSearch:SetText(text);
 
 	OnGeneralSearchChanged(self);
 end
 
-function APII_CoreMixin:UpdateGlobalSearchDropdown()
+function _M.APII_CoreMixin:UpdateGlobalSearchDropdown()
 	local generalSearch = self:GetGeneralSearch();
 	local dropdown = self:GetGlobalSearchDropdown();
 	dropdown:SetEnabled(generalSearch:HasText());
@@ -2252,7 +2255,7 @@ function APII_CoreMixin:UpdateGlobalSearchDropdown()
 	dropdown.Text:SetPoint("TOP", 0, 1);
 end
 
-function APII_CoreMixin:OnLoad()
+function _M.APII_CoreMixin:OnLoad()
 	self:RegisterEvent("PLAYER_REGEN_DISABLED");
 	self:SetScript("OnEvent", function(_, event, ...) self[event](self, ...) end)
 
@@ -2285,10 +2288,10 @@ function APII_CoreMixin:OnLoad()
 		local view = CreateScrollBoxListLinearView();
 		view:SetElementInitializer("APII_SystemButtonTemplate", function(frame, data)
 			frame:Initialize(data);
-			frame:RegisterCallback(APII_SystemButtonMixin.Event.OnClick, OnSystemClick, self);
+			frame:RegisterCallback(_M.APII_SystemButtonMixin.Event.OnClick, OnSystemClick, self);
 		end);
 		view:SetElementResetter(function(frame, data)
-			frame:UnregisterCallback(APII_SystemButtonMixin.Event.OnClick, self);
+			frame:UnregisterCallback(_M.APII_SystemButtonMixin.Event.OnClick, self);
 		end);
 
 		local systemScrollBox = self:GetSystemScrollBox();
@@ -2375,14 +2378,14 @@ function APII_CoreMixin:OnLoad()
 		end
 
 		view:SetElementInitializer("APII_SystemContentTemplate", function(frame, data)
-			frame:RegisterCallback(APII_SystemContentMixin.Event.ExpandToggled, ToggleAPI, self);
-			frame:RegisterCallback(APII_SystemContentMixin.Event.OnHyperlinkClick, OnHyperlinkClick, self);
+			frame:RegisterCallback(_M.APII_SystemContentMixin.Event.ExpandToggled, ToggleAPI, self);
+			frame:RegisterCallback(_M.APII_SystemContentMixin.Event.OnHyperlinkClick, OnHyperlinkClick, self);
 			frame:Initialize(data, APII.openedAPIs[data]);
 			frame:SetHyperlinkingEnabled(self:IsHyperlinkingActive());
 		end);
 		view:SetElementResetter(function(frame, data)
-			frame:UnregisterCallback(APII_SystemContentMixin.Event.ExpandToggled, self);
-			frame:UnregisterCallback(APII_SystemContentMixin.Event.OnHyperlinkClick, self);
+			frame:UnregisterCallback(_M.APII_SystemContentMixin.Event.ExpandToggled, self);
+			frame:UnregisterCallback(_M.APII_SystemContentMixin.Event.OnHyperlinkClick, self);
 		end);
 		view:SetElementExtentCalculator(function (index, data)
 			local dummy = systemContentScrollBox.ContentDummy;
@@ -2395,57 +2398,57 @@ function APII_CoreMixin:OnLoad()
 	end
 
 	local systemSearch = self:GetSystemSearch();
-	systemSearch:RegisterCallback(APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
+	systemSearch:RegisterCallback(_M.APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
 		if (not userInput) then return; end
 		self:UpdateSystemsList();
 		self:AddHistory(APII_HistoryReason.SystemSearch);
 	end, self);
 
-	systemSearch:RegisterCallback(APII_SearchboxMixin.Event.OnClearButtonClicked, function()
+	systemSearch:RegisterCallback(_M.APII_SearchboxMixin.Event.OnClearButtonClicked, function()
 		self:UpdateSystemsList();
 		self:AddHistory(APII_HistoryReason.SystemSearch);
 	end, self);
 	
 	do
-		generalSearch:RegisterCallback(APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
+		generalSearch:RegisterCallback(_M.APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
 			self:UpdateGlobalSearchDropdown();
 			if (not userInput) then return; end
 			OnGeneralSearchChanged(self);
 		end, self);
 		
-		generalSearch:RegisterCallback(APII_SearchboxMixin.Event.OnClearButtonClicked, function()
+		generalSearch:RegisterCallback(_M.APII_SearchboxMixin.Event.OnClearButtonClicked, function()
 			OnGeneralSearchChanged(self);
 		end, self);
 	end
 
 	local systemContentSearch = self:GetSystemContentSearch();
-	systemContentSearch:RegisterCallback(APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
+	systemContentSearch:RegisterCallback(_M.APII_SearchboxMixin.Event.OnTextChanged, function(_, text, userInput)
 		if (not userInput) then return; end
 			self:UpdateSystemContent(ScrollBoxConstants.DiscardScrollPosition);
 			self:AddHistory(APII_HistoryReason.ContentSearch);
 		end, self);
 
-	systemContentSearch:RegisterCallback(APII_SearchboxMixin.Event.OnClearButtonClicked, function()
+	systemContentSearch:RegisterCallback(_M.APII_SearchboxMixin.Event.OnClearButtonClicked, function()
 			self:UpdateSystemContent(ScrollBoxConstants.DiscardScrollPosition);
 			self:AddHistory(APII_HistoryReason.ContentSearch);
 		end, self);
 
 	local backButton = self:GetHistoryBackButton();
-	backButton:RegisterCallback(APII_HistoryButtonMixin.Event.OnClick, function(_, delta) self:StepHistory(delta); end);
+	backButton:RegisterCallback(_M.APII_HistoryButtonMixin.Event.OnClick, function(_, delta) self:StepHistory(delta); end);
 	backButton:SetTooltip(function()
 			GameTooltip_SetTitle(GameTooltip, HISTORY_BACKWARDS);
 			GameTooltip_AddInstructionLine(GameTooltip, HISTORY_BACKWARDS_TT);
 		end);
 
 	local forwardButton = self:GetHistoryForwardButton();
-	forwardButton:RegisterCallback(APII_HistoryButtonMixin.Event.OnClick, function(_, delta) self:StepHistory(delta); end);
+	forwardButton:RegisterCallback(_M.APII_HistoryButtonMixin.Event.OnClick, function(_, delta) self:StepHistory(delta); end);
 	forwardButton:SetTooltip(function()
 			GameTooltip_SetTitle(GameTooltip, HISTORY_FORWARDS);
 			GameTooltip_AddInstructionLine(GameTooltip, HISTORY_FORWARDS_TT);
 		end);
 
 	local highlightButton = self:GetHighlightToggleButton();
-	highlightButton:RegisterCallback(APII_CheckButtonMixin.Event.OnClick, function() self:UpdateHyperlinking(); end, self);
+	highlightButton:RegisterCallback(_M.APII_CheckButtonMixin.Event.OnClick, function() self:UpdateHyperlinking(); end, self);
 	highlightButton:SetTooltip(function(tooltip)
 			GameTooltip_SetTitle(tooltip, TOGGLE_HYPERLINKS);
 			GameTooltip_AddNormalLine(tooltip, TOGGLE_HYPERLINKS_TT);
@@ -2630,17 +2633,17 @@ function APII_CoreMixin:OnLoad()
 	self.ResizeButton:SetOnResizeStoppedCallback(function() self:OnDragStop() end)
 end
 
-function APII_CoreMixin:PLAYER_REGEN_DISABLED()
+function _M.APII_CoreMixin:PLAYER_REGEN_DISABLED()
 	HideUIPanel(self);
 end
 
-function APII_CoreMixin:Reset()
+function _M.APII_CoreMixin:Reset()
 	self:ClearAllPoints();
 	self:SetPoint("CENTER", UIParent);
 	self:SetSize(MIN_FRAME_WIDTH, MIN_FRAME_HEIGHT);
 end
 
-function APII_CoreMixin:OnUpdate()
+function _M.APII_CoreMixin:OnUpdate()
 	-- Doing this in OnUpdate because the event doesn't trigger with an editbox focused or clicking outside the game
 	if (self.shiftDown ~= IsShiftKeyDown()) then
 		self.shiftDown = IsShiftKeyDown();
@@ -2648,11 +2651,11 @@ function APII_CoreMixin:OnUpdate()
 	end
 end
 
-function APII_CoreMixin:IsHyperlinkingActive()
+function _M.APII_CoreMixin:IsHyperlinkingActive()
 	return self.shiftDown or self:GetHighlightToggleButton():GetChecked();
 end
 
-function APII_CoreMixin:UpdateHyperlinking()
+function _M.APII_CoreMixin:UpdateHyperlinking()
 	local highlightButton = self:GetHighlightToggleButton();
 	highlightButton:SetIconHighlighted(self.shiftDown);
 	local enableHyperlink = self:IsHyperlinkingActive();
@@ -2662,7 +2665,7 @@ function APII_CoreMixin:UpdateHyperlinking()
 	end
 end
 
-function APII_CoreMixin:OnShow()
+function _M.APII_CoreMixin:OnShow()
 	if (not self.initialized) then
 		self.initialized = true;
 		if (not APIDocumentation) then
@@ -2676,7 +2679,7 @@ function APII_CoreMixin:OnShow()
 	end
 end
 
-function APII_CoreMixin:UpdateSystemsList()
+function _M.APII_CoreMixin:UpdateSystemsList()
 	local dataProvider = CreateDataProvider();
 
 	local generalSearch = self:GetGeneralSearch();
@@ -2701,7 +2704,7 @@ function APII_CoreMixin:UpdateSystemsList()
 	systemScrollBox:SetDataProvider(dataProvider, ScrollBoxConstants.RetainScrollPosition);
 end
 
-function APII_CoreMixin:OpenSystem(system)
+function _M.APII_CoreMixin:OpenSystem(system)
 	dprint("Opening", system and system.Name)
 	for api in pairs(APII.openedAPIs) do
 		if (api.System ~= system) then
@@ -2728,7 +2731,7 @@ function APII_CoreMixin:OpenSystem(system)
 	self:AddHistory(APII_HistoryReason.SystemOpen);
 end
 
-function APII_CoreMixin:UpdateSystemContent(scrollPosition)
+function _M.APII_CoreMixin:UpdateSystemContent(scrollPosition)
 	local dataProvider = CreateDataProvider();
 
 	local generalSearch = self:GetGeneralSearch();
@@ -2804,7 +2807,7 @@ function APII_CoreMixin:UpdateSystemContent(scrollPosition)
 	systemContentScrollBox:SetDataProvider(dataProvider, scrollPosition);
 end
 
-function APII_CoreMixin:RequestShow(searchText)
+function _M.APII_CoreMixin:RequestShow(searchText)
 	if (not InCombatLockdown()) then
 		ShowUIPanel(self);
 		self:SetGeneralSearchText(searchText);

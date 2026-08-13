@@ -9,7 +9,10 @@
 	
 	<Script file="APIInterface.lua"/>
 
-	<Button name="APII_SystemButtonTemplate" mixin="APII_SystemButtonMixin" flattenRenderLayers="true" virtual="true">
+	<Button name="APII_SystemButtonTemplate" flattenRenderLayers="true" virtual="true">
+		<Mixins>
+			<Mixin key="mixins.APII_SystemButtonMixin" source="local"/>
+		</Mixins>
 		<Size y="40"/>
 		<Anchors>
 			<Anchor point="LEFT"/>
@@ -45,7 +48,10 @@
 		</Scripts>
 	</Button>
 
-	<Frame name="APII_TextAreaTemplate" mixin="APII_TextAreaMixin" virtual="true">
+	<Frame name="APII_TextAreaTemplate" virtual="true">
+		<Mixins>
+			<Mixin key="mixins.APII_TextAreaMixin" source="local"/>
+		</Mixins>
 		<KeyValues>
 			<KeyValue key="HitInsetLeft" type="number" value="-20"/>
 			<KeyValue key="HitInsetRight" type="number" value="-20"/>
@@ -71,7 +77,10 @@
 				</Scripts>
 			</SimpleHTML>
 
-			<EditBox parentKey="EditBox" mixin="APII_EditBoxMixin" autoFocus="false" multiLine="true" hidden="false">
+			<EditBox parentKey="EditBox" autoFocus="false" multiLine="true" hidden="false">
+				<Mixins>
+					<Mixin key="mixins.APII_EditBoxMixin" source="local"/>
+				</Mixins>
 				<Anchors>
 					<Anchor point="TOPLEFT"/>
 				</Anchors>
@@ -114,7 +123,10 @@
 		</Layers>
 	</Frame>
 
-	<Frame name="APII_TableTextAreaTemplate" inherits="APII_TextAreaTemplate" mixin="APII_TableTextAreaMixin" virtual="true">
+	<Frame name="APII_TableTextAreaTemplate" inherits="APII_TextAreaTemplate" virtual="true">
+		<Mixins>
+			<Mixin key="mixins.APII_TableTextAreaMixin" source="local"/>
+		</Mixins>
 		<Layers>
 			<Layer level="BACKGROUND">
 				<Texture parentKey="Background" setAllPoints="true" texelSnappingBias="0.0" snapToPixelGrid="false">
@@ -124,7 +136,10 @@
 		</Layers>
 	</Frame>
 
-	<Frame name="APII_TextAreaNineSliceTemplate" inherits="APII_TextAreaTemplate" mixin="APII_TextBlockNineSliceMixin" virtual="true">
+	<Frame name="APII_TextAreaNineSliceTemplate" inherits="APII_TextAreaTemplate" virtual="true">
+		<Mixins>
+			<Mixin key="mixins.APII_TextBlockNineSliceMixin" source="local"/>
+		</Mixins>
 		<Frames>
 			<Frame parentKey="Background" mixin="NineSlicePanelMixin" setAllPoints="true">
 				<KeyValues>
@@ -145,7 +160,10 @@
 		</Scripts>
 	</Frame>
 
-	<Frame name="APII_TextBlockTemplate" mixin="APII_TextBlockMixin" virtual="true">
+	<Frame name="APII_TextBlockTemplate" virtual="true">
+		<Mixins>
+			<Mixin key="mixins.APII_TextBlockMixin" source="local"/>
+		</Mixins>
 		<Frames>
 			<Frame parentKey="TextArea" inherits="APII_TextAreaTemplate">
 				<Anchors>
@@ -159,7 +177,10 @@
 		</Scripts>
 	</Frame>
 
-	<Frame name="APII_TextBlockCopyStringTemplate" mixin="APII_TextBlockCopyStringMixin" virtual="true">
+	<Frame name="APII_TextBlockCopyStringTemplate" virtual="true">
+		<Mixins>
+			<Mixin key="mixins.APII_TextBlockCopyStringMixin" source="local"/>
+		</Mixins>
 		<Frames>
 			<Frame parentKey="TextArea" inherits="APII_TextAreaNineSliceTemplate">
 				<Anchors>
@@ -173,7 +194,10 @@
 		</Scripts>
 	</Frame>
 
-	<Frame name="APII_TextBlockTableTemplate" mixin="APII_TextBlockTableMixin" virtual="true">
+	<Frame name="APII_TextBlockTableTemplate" virtual="true">
+		<Mixins>
+			<Mixin key="mixins.APII_TextBlockTableMixin" source="local"/>
+		</Mixins>
 		<Layers>
 			<Layer level="BACKGROUND">
 				<Texture parentKey="Background" texelSnappingBias="0.0" snapToPixelGrid="false"/>
@@ -185,7 +209,10 @@
 		</Scripts>
 	</Frame>
 
-	<Frame name="APII_SystemContentTemplate" mixin="APII_SystemContentMixin" virtual="true">
+	<Frame name="APII_SystemContentTemplate" virtual="true">
+		<Mixins>
+			<Mixin key="mixins.APII_SystemContentMixin" source="local"/>
+		</Mixins>
 		<Size y="42" />
 		<Anchors>
 			<Anchor point="LEFT" />
@@ -316,7 +343,10 @@
 		</Scripts>
 	</Frame>
 
-	<EditBox name="APII_SearchBoxTempalte" inherits="SearchBoxTemplate" mixin="APII_SearchboxMixin" virtual="true">
+	<EditBox name="APII_SearchBoxTempalte" inherits="SearchBoxTemplate" virtual="true">
+		<Mixins>
+			<Mixin key="mixins.APII_SearchboxMixin" source="local"/>
+		</Mixins>
 		<Scripts>
 			<OnLoad method="OnLoad"/>
 			<OnTextChanged method="OnTextChanged"/>
@@ -325,7 +355,10 @@
 		</Scripts>
 	</EditBox>
 
-	<Frame name="APII_Frame" inherits="PortraitFrameTemplate" mixin="APII_CoreMixin" movable="true" resizable="true" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
+	<Frame name="APII_Frame" inherits="PortraitFrameTemplate" movable="true" resizable="true" toplevel="true" frameStrata="MEDIUM" enableMouse="true" parent="UIParent" hidden="true">
+		<Mixins>
+			<Mixin key="mixins.APII_CoreMixin" source="local"/>
+		</Mixins>
 		<Size x="800" y="500"/>
 		<Anchors>
 			<Anchor point="CENTER" x="0" y="0"/>
@@ -348,7 +381,10 @@
 				</Anchors>
 
 				<Frames>
-					<CheckButton parentKey="HighlightToggleButton" inherits="WowStyle2IconButtonTemplate" mixin="APII_CheckButtonMixin">
+					<CheckButton parentKey="HighlightToggleButton" inherits="WowStyle2IconButtonTemplate">
+						<Mixins>
+							<Mixin key="mixins.APII_CheckButtonMixin" source="local"/>
+						</Mixins>
 						<Anchors>
 							<Anchor point="LEFT" x="10" y="-1"/>
 						</Anchors>
@@ -362,7 +398,10 @@
 						</Scripts>
 					</CheckButton>
 
-					<Button parentKey="HistoryBackButton" inherits="WowStyle2IconButtonTemplate" mixin="APII_HistoryButtonMixin">
+					<Button parentKey="HistoryBackButton" inherits="WowStyle2IconButtonTemplate">
+						<Mixins>
+							<Mixin key="mixins.APII_HistoryButtonMixin" source="local"/>
+						</Mixins>
 						<Anchors>
 							<Anchor point="LEFT" relativeKey="$parent.HighlightToggleButton" relativePoint="RIGHT" x="4" y="0"/>
 						</Anchors>
@@ -381,7 +420,10 @@
 							<OnLeave method="OnLeave"/>
 						</Scripts>
 					</Button>
-					<Button parentKey="HistoryForwardButton" inherits="WowStyle2IconButtonTemplate" mixin="APII_HistoryButtonMixin">
+					<Button parentKey="HistoryForwardButton" inherits="WowStyle2IconButtonTemplate">
+						<Mixins>
+							<Mixin key="mixins.APII_HistoryButtonMixin" source="local"/>
+						</Mixins>
 						<!-- <Size x="22" y="22"/> -->
 						<Anchors>
 							<Anchor point="LEFT" relativeKey="$parent.HistoryBackButton" relativePoint="RIGHT" x="0" y="0"/>
@@ -452,7 +494,10 @@
 				</Anchors>
 			</Frame>
 
-			<Frame parentKey="SystemContainer" mixin="APII_VerticalLayoutMixin">
+			<Frame parentKey="SystemContainer">
+				<Mixins>
+					<Mixin key="mixins.APII_VerticalLayoutMixin" source="local"/>
+				</Mixins>
 				<Anchors> 
 					<Anchor point="TOPLEFT" relativeKey="$parent.SystemScrollInset" x="4" y="-4"/>
 					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.SystemScrollInset" x="-4" y="3"/>
@@ -511,7 +556,10 @@
 				</Anchors>
 
 				<Frames>
-					<Frame parentKey="SystemContent" mixin="APII_VerticalLayoutMixin">
+					<Frame parentKey="SystemContent">
+						<Mixins>
+							<Mixin key="mixins.APII_VerticalLayoutMixin" source="local"/>
+						</Mixins>
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.SystemContentScrollInset" x="4" y="-4" />
 							<Anchor point="BOTTOMRIGHT" relativeKey="$parent.SystemContentScrollInset" x="-4" y="3" />
