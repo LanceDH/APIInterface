@@ -123,7 +123,7 @@
 		</Layers>
 	</Frame>
 
-	<Frame name="APII_TableTextAreaTemplate" inherits="APII_TextAreaTemplate" virtual="true">
+	<Frame name="APII_TableTextAreaTemplate" inherits="APII_TextAreaTemplate" roundLayoutToNearestPixel="true" virtual="true">
 		<Mixins>
 			<Mixin key="mixins.APII_TableTextAreaMixin" source="local"/>
 		</Mixins>

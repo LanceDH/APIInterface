@@ -1287,7 +1287,7 @@ do
 				local textArea = APII_FrameFactory:Create(self, "APII_TableTextAreaTemplate");
 				textArea:SetParent(self);
 				textArea:Show();
-				PixelUtil.SetPoint(textArea, "TOPLEFT", self, "TOPLEFT", xOffset, -yOffset);
+				textArea:SetPoint("TOPLEFT", self, "TOPLEFT", xOffset, -yOffset);
 				textArea:SetAvailableWidth(columnWidth);
 				textArea:SetPadding(TABLE_SPACING_HORIZONTAL, TABLE_SPACING_HORIZONTAL, TABLE_SPACING_VERTICAL, TABLE_SPACING_VERTICAL);
 				local text = content and content.text or "";
